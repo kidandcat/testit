@@ -1,0 +1,7 @@
+# Basic test with fast-loading site
+
+test "Navigate to Example.com"
+  navigate "https://example.com"
+  wait_for "h1"
+  assert_text "h1" "Example Domain"
+  assert_title "Example Domain"

@@ -1,0 +1,17 @@
+# Example test file for login functionality
+
+test "User can login successfully"
+  navigate "https://example.com/login"
+  type "#username" "testuser@example.com"
+  type "#password" "securepassword123"
+  click "#login-button"
+  wait_for ".dashboard"
+  assert_text ".welcome-message" "Welcome, Test User!"
+
+test "Login fails with invalid credentials"
+  navigate "https://example.com/login"
+  type "#username" "invalid@example.com"
+  type "#password" "wrongpassword"
+  click "#login-button"
+  wait_for ".error-message"
+  assert_text ".error-message" "Invalid username or password"

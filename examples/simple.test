@@ -1,0 +1,5 @@
+# Simple test to demonstrate functionality
+
+test "Navigate to Google"
+  navigate "https://www.google.com"
+  wait_for "input[name='q']"
