@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fasttest/fasttest/pkg/config"
-	"github.com/fasttest/fasttest/pkg/fasttest"
-	"github.com/fasttest/fasttest/pkg/parser"
+	"github.com/kidandcat/fasttest/pkg/config"
+	"github.com/kidandcat/fasttest/pkg/fasttest"
+	"github.com/kidandcat/fasttest/pkg/parser"
 )
 
 func main() {

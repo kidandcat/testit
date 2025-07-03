@@ -163,21 +163,37 @@ func (r *Runner) setupConsoleListener(page *rod.Page, result *TestResult) {
 }
 
 func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
+	// Execute the step
+	var err error
 	switch step.Action {
 	case "navigate":
-		return page.Navigate(step.Target)
+		err = page.Navigate(step.Target)
+		if err == nil {
+			// Wait for page to be stable after navigation
+			err = page.WaitStable(500 * time.Millisecond)
+		}
 	case "click":
 		element, err := page.Element(step.Target)
 		if err != nil {
 			return err
 		}
-		return element.Click(proto.InputMouseButtonLeft, 1)
+		err = element.Click(proto.InputMouseButtonLeft, 1)
+		if err == nil {
+			// Wait for page to be stable after click
+			err = page.WaitStable(500 * time.Millisecond)
+		}
+		return err
 	case "type":
 		element, err := page.Element(step.Target)
 		if err != nil {
 			return err
 		}
-		return element.Input(step.Value)
+		err = element.Input(step.Value)
+		if err == nil {
+			// Wait for page to be stable after typing
+			err = page.WaitStable(500 * time.Millisecond)
+		}
+		return err
 	case "wait_for":
 		_, err := page.Element(step.Target)
 		return err
@@ -300,7 +316,12 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 		if err != nil {
 			return err
 		}
-		return element.Select([]string{step.Value}, true, rod.SelectorTypeText)
+		err = element.Select([]string{step.Value}, true, rod.SelectorTypeText)
+		if err == nil {
+			// Wait for page to be stable after select
+			err = page.WaitStable(500 * time.Millisecond)
+		}
+		return err
 		
 	case "check":
 		element, err := page.Element(step.Target)
@@ -308,7 +329,12 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 			return err
 		}
 		// Click the checkbox to check it
-		return element.Click(proto.InputMouseButtonLeft, 1)
+		err = element.Click(proto.InputMouseButtonLeft, 1)
+		if err == nil {
+			// Wait for page to be stable after check
+			err = page.WaitStable(500 * time.Millisecond)
+		}
+		return err
 		
 	case "uncheck":
 		element, err := page.Element(step.Target)
@@ -316,18 +342,30 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 			return err
 		}
 		// Click the checkbox to uncheck it
-		return element.Click(proto.InputMouseButtonLeft, 1)
+		err = element.Click(proto.InputMouseButtonLeft, 1)
+		if err == nil {
+			// Wait for page to be stable after uncheck
+			err = page.WaitStable(500 * time.Millisecond)
+		}
+		return err
 		
 	case "hover":
 		element, err := page.Element(step.Target)
 		if err != nil {
 			return err
 		}
-		return element.Hover()
+		err = element.Hover()
+		if err == nil {
+			// Wait for page to be stable after hover
+			err = page.WaitStable(500 * time.Millisecond)
+		}
+		return err
 		
 	default:
 		return fmt.Errorf("unknown action: %s", step.Action)
 	}
+	
+	return err
 }
 
 func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string) error {

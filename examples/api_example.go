@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/fasttest/fasttest/pkg/fasttest"
+	"github.com/kidandcat/fasttest/pkg/fasttest"
 )
 
 func main() {

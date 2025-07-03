@@ -1,4 +1,4 @@
-module github.com/fasttest/fasttest
+module github.com/kidandcat/fasttest
 
 go 1.24.1
 

@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/fasttest/fasttest/pkg/fasttest"
+	"github.com/kidandcat/fasttest/pkg/fasttest"
 )
 
 func TestParseString(t *testing.T) {

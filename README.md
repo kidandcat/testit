@@ -15,7 +15,7 @@ A simple and powerful browser testing framework built on [go-rod/rod](https://gi
 ## Installation
 
 ```bash
-go get github.com/fasttest/fasttest
+go get github.com/kidandcat/fasttest
 ```
 
 ## Quick Start
@@ -222,7 +222,7 @@ package main
 import (
     "fmt"
     "log"
-    "github.com/fasttest/fasttest/pkg/fasttest"
+    "github.com/kidandcat/fasttest/pkg/fasttest"
 )
 
 func main() {

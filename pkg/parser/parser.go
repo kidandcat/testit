@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fasttest/fasttest/pkg/fasttest"
+	"github.com/kidandcat/fasttest/pkg/fasttest"
 )
 
 type Parser struct{}
