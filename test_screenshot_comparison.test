@@ -1,0 +1,15 @@
+# Test screenshot comparison behavior
+
+test "Screenshot comparison with change"
+  navigate "https://example.com"
+  wait_for "h1"
+  
+  # First screenshot - should save with test name if no file exists
+  screenshot "comparison_test.png"
+  
+  # Navigate back to same page to test comparison
+  navigate "https://example.com"
+  wait_for "h1"
+  
+  # Second screenshot - should pass because same page
+  screenshot "comparison_test.png"

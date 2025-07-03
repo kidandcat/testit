@@ -66,10 +66,8 @@ fasttest login.test
 - `assert_attribute "selector" "attribute" "value"` - Assert attribute value
 
 ### Screenshots
-- `screenshot` - Take a screenshot (auto-names with test name + number)
+- `screenshot` - Take a screenshot (auto-names with test name + number). If screenshot already exists, compares against it and fails if different
 - `screenshot "filename"` - Take a screenshot with specific filename
-- `assert_screenshot` - Compare against baseline (auto-names with test name + number)
-- `assert_screenshot "baseline_name"` - Compare against specific baseline screenshot
 
 ## Configuration
 
@@ -143,20 +141,18 @@ fasttest tests/
 
 ### Visual Regression Testing
 
-Use screenshot assertions to catch visual regressions:
+Use screenshot command to catch visual regressions:
 
 ```
 test "Homepage visual test"
   navigate "https://mysite.com"
   wait_for ".main-content"
-  assert_screenshot "homepage"
+  screenshot
 ```
 
-First run creates baseline screenshots. Subsequent runs compare against baselines.
+First run creates baseline screenshots. Subsequent runs compare against baselines and fail if they differ.
 
-Update baselines when intentional changes are made:
-```bash
-fasttest --update-screenshots
+To update baselines when intentional changes are made, delete the old screenshot file and run the test again
 ```
 
 ### Complex Form Testing

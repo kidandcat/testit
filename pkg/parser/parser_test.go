@@ -76,9 +76,7 @@ test "Test with comments"
 			input: `test "Screenshot test"
   navigate "https://example.com"
   screenshot
-  screenshot "custom.png"
-  assert_screenshot
-  assert_screenshot "baseline"`,
+  screenshot "custom.png"`,
 			want: []fasttest.Test{
 				{
 					Name: "Screenshot test",
@@ -86,8 +84,6 @@ test "Test with comments"
 						{Action: "navigate", Target: "https://example.com"},
 						{Action: "screenshot", Target: ""},
 						{Action: "screenshot", Target: "custom.png"},
-						{Action: "assert_screenshot", Target: ""},
-						{Action: "assert_screenshot", Target: "baseline"},
 					},
 				},
 			},

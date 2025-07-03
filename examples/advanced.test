@@ -46,7 +46,7 @@ test "Screenshot comparison"
   
   # This will create a baseline on first run
   # On subsequent runs, it will compare against baseline
-  assert_screenshot "example-homepage"
+  screenshot "example-homepage.png"
 
 test "Dynamic content waiting"
   navigate "https://example.com"

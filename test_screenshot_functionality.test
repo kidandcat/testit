@@ -1,0 +1,28 @@
+# Test screenshot functionality
+
+test "Test screenshot auto-naming"
+  navigate "https://example.com"
+  wait_for "h1"
+  
+  # This should create Test_screenshot_auto-naming.png
+  screenshot
+  
+  # This should create Test_screenshot_auto-naming_2.png
+  screenshot
+  
+  # Navigate back and compare against first screenshot
+  navigate "https://example.com"
+  wait_for "h1"
+  screenshot
+
+test "Test screenshot with custom name"
+  navigate "https://example.com"
+  wait_for "h1"
+  
+  # This should create my_custom_screenshot.png
+  screenshot "my_custom_screenshot.png"
+  
+  # This should compare against my_custom_screenshot.png
+  navigate "https://example.com"
+  wait_for "h1"
+  screenshot "my_custom_screenshot.png"

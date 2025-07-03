@@ -264,9 +264,6 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 	case "screenshot":
 		return r.takeScreenshot(page, step.Target, testName)
 		
-	case "assert_screenshot":
-		return r.assertScreenshot(page, step.Target, testName)
-		
 	case "wait_for_text":
 		element, err := page.Element(step.Target)
 		if err != nil {
@@ -359,12 +356,41 @@ func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string
 		return fmt.Errorf("failed to create screenshot directory: %v", err)
 	}
 	
+	// Take current screenshot
 	screenshot, err := page.Screenshot(true, nil)
 	if err != nil {
 		return fmt.Errorf("failed to take screenshot: %v", err)
 	}
 	
 	path := filepath.Join(r.config.ScreenshotDir, filename)
+	
+	// Check if screenshot already exists
+	if _, err := os.Stat(path); err == nil {
+		// Screenshot exists, load and compare
+		baselineData, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read existing screenshot: %v", err)
+		}
+		
+		// Compare screenshots
+		diff, err := r.compareImages(baselineData, screenshot)
+		if err != nil {
+			return fmt.Errorf("failed to compare screenshots: %v", err)
+		}
+		
+		if diff > r.config.ScreenshotThreshold {
+			// Save diff screenshot for debugging
+			diffPath := strings.TrimSuffix(path, ".png") + ".diff.png"
+			os.WriteFile(diffPath, screenshot, 0644)
+			
+			return fmt.Errorf("screenshot differs from baseline by %.2f%% (threshold: %.2f%%). Delete the old screenshot at %s to save the new one", diff*100, r.config.ScreenshotThreshold*100, path)
+		}
+		
+		// Screenshots match, no need to save
+		return nil
+	}
+	
+	// Screenshot doesn't exist, save it
 	err = os.WriteFile(path, screenshot, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to save screenshot: %v", err)
@@ -373,83 +399,6 @@ func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string
 	return nil
 }
 
-func (r *Runner) assertScreenshot(page *rod.Page, baselineName string, testName string) error {
-	if baselineName == "" {
-		// Use test name with counter
-		safeTestName := strings.ReplaceAll(testName, " ", "_")
-		safeTestName = strings.ReplaceAll(safeTestName, "/", "_")
-		safeTestName = strings.ReplaceAll(safeTestName, "\\", "_")
-		
-		// Get counter for this test
-		r.mu.Lock()
-		r.screenshotCounter[testName]++
-		counter := r.screenshotCounter[testName]
-		r.mu.Unlock()
-		
-		if counter == 1 {
-			baselineName = safeTestName
-		} else {
-			baselineName = fmt.Sprintf("%s_%d", safeTestName, counter)
-		}
-	}
-	
-	baselinePath := filepath.Join(r.config.ScreenshotDir, baselineName+".png")
-	
-	// Take current screenshot
-	currentScreenshot, err := page.Screenshot(true, nil)
-	if err != nil {
-		return fmt.Errorf("failed to take screenshot: %v", err)
-	}
-	
-	// Check if baseline exists
-	if _, err := os.Stat(baselinePath); os.IsNotExist(err) {
-		if r.config.UpdateScreenshots {
-			// Create screenshot directory if it doesn't exist
-			err := os.MkdirAll(r.config.ScreenshotDir, 0755)
-			if err != nil {
-				return fmt.Errorf("failed to create screenshot directory: %v", err)
-			}
-			
-			err = os.WriteFile(baselinePath, currentScreenshot, 0644)
-			if err != nil {
-				return fmt.Errorf("failed to save baseline screenshot: %v", err)
-			}
-			return nil
-		}
-		return fmt.Errorf("baseline screenshot not found: %s", baselinePath)
-	}
-	
-	// Load baseline
-	baselineData, err := os.ReadFile(baselinePath)
-	if err != nil {
-		return fmt.Errorf("failed to read baseline screenshot: %v", err)
-	}
-	
-	// Compare screenshots
-	diff, err := r.compareImages(baselineData, currentScreenshot)
-	if err != nil {
-		return fmt.Errorf("failed to compare screenshots: %v", err)
-	}
-	
-	if diff > r.config.ScreenshotThreshold {
-		// Save diff screenshot for debugging
-		diffPath := filepath.Join(r.config.ScreenshotDir, baselineName+".diff.png")
-		os.WriteFile(diffPath, currentScreenshot, 0644)
-		
-		if r.config.UpdateScreenshots {
-			// Update the baseline with new screenshot
-			err = os.WriteFile(baselinePath, currentScreenshot, 0644)
-			if err != nil {
-				return fmt.Errorf("failed to update baseline screenshot: %v", err)
-			}
-			return nil
-		}
-		
-		return fmt.Errorf("screenshot differs from baseline by %.2f%% (threshold: %.2f%%). Delete the old screenshot at %s to save the new one, or run with --update-screenshots flag", diff*100, r.config.ScreenshotThreshold*100, baselinePath)
-	}
-	
-	return nil
-}
 
 func (r *Runner) compareImages(baseline, current []byte) (float64, error) {
 	baselineImg, err := png.Decode(bytes.NewReader(baseline))

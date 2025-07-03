@@ -207,16 +207,6 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: filename,
 		}, nil
 		
-	case "assert_screenshot":
-		baselineName := ""
-		if len(parts) >= 2 {
-			baselineName = strings.Trim(strings.Join(parts[1:], " "), `"'`)
-		}
-		return &fasttest.Step{
-			Action: "assert_screenshot",
-			Target: baselineName,
-		}, nil
-		
 	case "wait_for_text":
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("line %d: wait_for_text requires a selector and text", lineNum)
