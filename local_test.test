@@ -1,0 +1,14 @@
+# Test local file to verify DSL is easy to use
+
+test "Navigate to local file"
+  navigate "file:///Users/jairo/fasttest/test_local.html"
+  wait_for "h1"
+  assert_text "h1" "Welcome to FastTest"
+  assert_text ".message" "This is a test page"
+  
+test "Test interaction"
+  navigate "file:///Users/jairo/fasttest/test_local.html"
+  click "#btn"
+  wait_for "#result"
+  assert_text "#result" "Button clicked!"
+  screenshot

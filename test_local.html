@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Welcome to FastTest</h1>
+    <p class="message">This is a test page</p>
+    <button id="btn">Click Me</button>
+    <div id="result" style="display:none">Button clicked!</div>
+    <script>
+        document.getElementById('btn').addEventListener('click', function() {
+            document.getElementById('result').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
