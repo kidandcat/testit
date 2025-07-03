@@ -66,8 +66,10 @@ fasttest login.test
 - `assert_attribute "selector" "attribute" "value"` - Assert attribute value
 
 ### Screenshots
-- `screenshot "filename"` - Take a screenshot
-- `assert_screenshot "baseline_name"` - Compare against baseline screenshot
+- `screenshot` - Take a screenshot (auto-names with test name + number)
+- `screenshot "filename"` - Take a screenshot with specific filename
+- `assert_screenshot` - Compare against baseline (auto-names with test name + number)
+- `assert_screenshot "baseline_name"` - Compare against specific baseline screenshot
 
 ## Configuration
 

@@ -49,7 +49,8 @@ func (p *Parser) parse(scanner *bufio.Scanner) ([]fasttest.Test, error) {
 				tests = append(tests, *currentTest)
 			}
 			
-			testName := strings.Trim(strings.TrimPrefix(line, "test"), `"'`)
+			testNamePart := strings.TrimPrefix(line, "test ")
+			testName := strings.Trim(testNamePart, `"'`)
 			currentTest = &fasttest.Test{
 				Name: testName,
 			}
@@ -207,12 +208,13 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 		}, nil
 		
 	case "assert_screenshot":
-		if len(parts) < 2 {
-			return nil, fmt.Errorf("line %d: assert_screenshot requires a baseline name", lineNum)
+		baselineName := ""
+		if len(parts) >= 2 {
+			baselineName = strings.Trim(strings.Join(parts[1:], " "), `"'`)
 		}
 		return &fasttest.Step{
 			Action: "assert_screenshot",
-			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
+			Target: baselineName,
 		}, nil
 		
 	case "wait_for_text":

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastTest - Simple & Powerful Browser Testing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #10b981;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --gray: #6b7280;
+            --border: #e5e7eb;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--dark);
+            line-height: 1.6;
+            background: #fff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        header {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: var(--gray);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        
+        /* Hero */
+        .hero {
+            padding: 8rem 0 4rem;
+            text-align: center;
+            background: linear-gradient(to bottom, var(--light), #fff);
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero .subtitle {
+            font-size: 1.25rem;
+            color: var(--gray);
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #fff;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        /* Code Example */
+        .code-example {
+            background: var(--dark);
+            color: #fff;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            margin: 3rem auto;
+            max-width: 800px;
+            overflow-x: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .code-example pre {
+            font-family: 'Courier New', monospace;
+            line-height: 1.5;
+        }
+        
+        .code-example .comment {
+            color: #6b7280;
+        }
+        
+        .code-example .keyword {
+            color: #f59e0b;
+        }
+        
+        .code-example .string {
+            color: #10b981;
+        }
+        
+        /* Features */
+        .features {
+            padding: 4rem 0;
+            background: var(--light);
+        }
+        
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .feature-card h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1.25rem;
+        }
+        
+        .feature-card p {
+            color: var(--gray);
+        }
+        
+        /* How it works */
+        .how-it-works {
+            padding: 4rem 0;
+        }
+        
+        .how-it-works h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .step {
+            text-align: center;
+        }
+        
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 auto 1rem;
+        }
+        
+        .step h3 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .step p {
+            color: var(--gray);
+        }
+        
+        /* Installation */
+        .installation {
+            padding: 4rem 0;
+            background: var(--light);
+        }
+        
+        .installation h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .install-command {
+            background: var(--dark);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .copy-btn:hover {
+            background: var(--primary-dark);
+        }
+        
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            background: var(--dark);
+            color: white;
+            text-align: center;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        
+        .footer-links a:hover {
+            opacity: 1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <a href="#" class="logo">FastTest</a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-it-works">How it Works</a></li>
+                <li><a href="#installation">Installation</a></li>
+                <li><a href="https://github.com/fasttest/fasttest">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <section class="hero">
+        <div class="container">
+            <h1>Browser Testing Made Simple</h1>
+            <p class="subtitle">Write tests in plain English. No programming required. Powered by go-rod for lightning-fast execution.</p>
+            <div class="hero-buttons">
+                <a href="#installation" class="btn btn-primary">
+                    Get Started
+                    <span>→</span>
+                </a>
+                <a href="https://github.com/fasttest/fasttest" class="btn btn-secondary">
+                    View on GitHub
+                </a>
+            </div>
+            
+            <div class="code-example">
+                <pre><span class="comment"># login.test</span>
+<span class="keyword">test</span> <span class="string">"User can login successfully"</span>
+  <span class="keyword">navigate</span> <span class="string">"https://myapp.com/login"</span>
+  <span class="keyword">type</span> <span class="string">"#email"</span> <span class="string">"user@example.com"</span>
+  <span class="keyword">type</span> <span class="string">"#password"</span> <span class="string">"secure123"</span>
+  <span class="keyword">click</span> <span class="string">"#login-button"</span>
+  <span class="keyword">wait_for</span> <span class="string">".dashboard"</span>
+  <span class="keyword">assert_text</span> <span class="string">".welcome"</span> <span class="string">"Welcome back!"</span>
+  <span class="keyword">screenshot</span>  <span class="comment"># Auto-names: User_can_login_successfully.png</span></pre>
+            </div>
+        </div>
+    </section>
+    
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Why FastTest?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>No Code Required</h3>
+                    <p>Write tests in simple DSL files. Anyone on your team can create and maintain tests without programming knowledge.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📸</div>
+                    <h3>Visual Testing</h3>
+                    <p>Built-in screenshot capture and comparison. Catch visual regressions automatically with baseline comparisons.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Lightning Fast</h3>
+                    <p>Built on go-rod for optimal performance. Tests run in parallel with minimal resource usage.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Rich Assertions</h3>
+                    <p>Check elements, text, URLs, attributes and more. Automatically detect console errors.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3>Flexible Config</h3>
+                    <p>YAML/JSON configuration files for project-wide settings. CLI options for runtime overrides.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Single Binary</h3>
+                    <p>No dependencies to install. Just download the binary and start testing immediately.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Write Test Files</h3>
+                    <p>Create .test files with simple commands like navigate, click, type, and assert.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Run FastTest</h3>
+                    <p>Execute tests from the command line with a single command: fasttest</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Review Results</h3>
+                    <p>Get clear pass/fail results, error messages, and visual diffs for failed screenshots.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="installation" id="installation">
+        <div class="container">
+            <h2>Get Started in Seconds</h2>
+            <div class="install-command">
+                <code id="install-cmd">go install github.com/fasttest/fasttest/cmd/fasttest@latest</code>
+                <button class="copy-btn" onclick="copyCommand()">Copy</button>
+            </div>
+            <p style="text-align: center; margin-top: 2rem; color: var(--gray);">
+                Or download pre-built binaries from our 
+                <a href="https://github.com/fasttest/fasttest/releases" style="color: var(--primary);">releases page</a>
+            </p>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/fasttest/fasttest">GitHub</a>
+                <a href="https://github.com/fasttest/fasttest#documentation">Documentation</a>
+                <a href="https://github.com/fasttest/fasttest/issues">Issues</a>
+                <a href="https://github.com/fasttest/fasttest/blob/main/LICENSE">License</a>
+            </div>
+            <p style="opacity: 0.6;">© 2024 FastTest. Built with ❤️ using go-rod.</p>
+        </div>
+    </footer>
+    
+    <script>
+        function copyCommand() {
+            const command = document.getElementById('install-cmd').textContent;
+            navigator.clipboard.writeText(command);
+            const btn = document.querySelector('.copy-btn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+                btn.textContent = 'Copy';
+            }, 2000);
+        }
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -23,6 +23,7 @@ type Runner struct {
 	results       []TestResult
 	mu            sync.Mutex
 	consoleErrors []ConsoleError
+	screenshotCounter map[string]int
 }
 
 type Config struct {
@@ -76,6 +77,7 @@ func NewRunner(config *Config) *Runner {
 	}
 	return &Runner{
 		config: config,
+		screenshotCounter: make(map[string]int),
 	}
 }
 
@@ -123,7 +125,7 @@ func (r *Runner) runTest(test Test) TestResult {
 	r.setupConsoleListener(page, &result)
 	
 	for _, step := range test.Steps {
-		if err := r.executeStep(page, step); err != nil {
+		if err := r.executeStep(page, step, test.Name); err != nil {
 			result.Passed = false
 			result.Error = err
 			break
@@ -160,7 +162,7 @@ func (r *Runner) setupConsoleListener(page *rod.Page, result *TestResult) {
 	})()
 }
 
-func (r *Runner) executeStep(page *rod.Page, step Step) error {
+func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 	switch step.Action {
 	case "navigate":
 		return page.Navigate(step.Target)
@@ -260,10 +262,10 @@ func (r *Runner) executeStep(page *rod.Page, step Step) error {
 		return nil
 		
 	case "screenshot":
-		return r.takeScreenshot(page, step.Target)
+		return r.takeScreenshot(page, step.Target, testName)
 		
 	case "assert_screenshot":
-		return r.assertScreenshot(page, step.Target)
+		return r.assertScreenshot(page, step.Target, testName)
 		
 	case "wait_for_text":
 		element, err := page.Element(step.Target)
@@ -331,9 +333,24 @@ func (r *Runner) executeStep(page *rod.Page, step Step) error {
 	}
 }
 
-func (r *Runner) takeScreenshot(page *rod.Page, filename string) error {
+func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string) error {
 	if filename == "" {
-		filename = fmt.Sprintf("screenshot_%d.png", time.Now().Unix())
+		// Sanitize test name for filename
+		safeTestName := strings.ReplaceAll(testName, " ", "_")
+		safeTestName = strings.ReplaceAll(safeTestName, "/", "_")
+		safeTestName = strings.ReplaceAll(safeTestName, "\\", "_")
+		
+		// Get counter for this test
+		r.mu.Lock()
+		r.screenshotCounter[testName]++
+		counter := r.screenshotCounter[testName]
+		r.mu.Unlock()
+		
+		if counter == 1 {
+			filename = fmt.Sprintf("%s.png", safeTestName)
+		} else {
+			filename = fmt.Sprintf("%s_%d.png", safeTestName, counter)
+		}
 	}
 	
 	// Create screenshot directory if it doesn't exist
@@ -356,7 +373,26 @@ func (r *Runner) takeScreenshot(page *rod.Page, filename string) error {
 	return nil
 }
 
-func (r *Runner) assertScreenshot(page *rod.Page, baselineName string) error {
+func (r *Runner) assertScreenshot(page *rod.Page, baselineName string, testName string) error {
+	if baselineName == "" {
+		// Use test name with counter
+		safeTestName := strings.ReplaceAll(testName, " ", "_")
+		safeTestName = strings.ReplaceAll(safeTestName, "/", "_")
+		safeTestName = strings.ReplaceAll(safeTestName, "\\", "_")
+		
+		// Get counter for this test
+		r.mu.Lock()
+		r.screenshotCounter[testName]++
+		counter := r.screenshotCounter[testName]
+		r.mu.Unlock()
+		
+		if counter == 1 {
+			baselineName = safeTestName
+		} else {
+			baselineName = fmt.Sprintf("%s_%d", safeTestName, counter)
+		}
+	}
+	
 	baselinePath := filepath.Join(r.config.ScreenshotDir, baselineName+".png")
 	
 	// Take current screenshot
@@ -399,7 +435,17 @@ func (r *Runner) assertScreenshot(page *rod.Page, baselineName string) error {
 		// Save diff screenshot for debugging
 		diffPath := filepath.Join(r.config.ScreenshotDir, baselineName+".diff.png")
 		os.WriteFile(diffPath, currentScreenshot, 0644)
-		return fmt.Errorf("screenshot differs from baseline by %.2f%% (threshold: %.2f%%)", diff*100, r.config.ScreenshotThreshold*100)
+		
+		if r.config.UpdateScreenshots {
+			// Update the baseline with new screenshot
+			err = os.WriteFile(baselinePath, currentScreenshot, 0644)
+			if err != nil {
+				return fmt.Errorf("failed to update baseline screenshot: %v", err)
+			}
+			return nil
+		}
+		
+		return fmt.Errorf("screenshot differs from baseline by %.2f%% (threshold: %.2f%%). Delete the old screenshot at %s to save the new one, or run with --update-screenshots flag", diff*100, r.config.ScreenshotThreshold*100, baselinePath)
 	}
 	
 	return nil
