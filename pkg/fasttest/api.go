@@ -1,10 +1,10 @@
 package fasttest
 
 import (
+	"context"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
+	"github.com/chromedp/chromedp"
 )
 
 type TestBuilder struct {
@@ -14,7 +14,7 @@ type TestBuilder struct {
 
 type StepBuilder struct {
 	builder *TestBuilder
-	page    *rod.Page
+	ctx     context.Context
 }
 
 func New() *Runner {
@@ -95,14 +95,14 @@ func (tb *TestBuilder) Add() *TestBuilder {
 }
 
 type PageTester struct {
-	page    *rod.Page
+	ctx     context.Context
 	result  *TestResult
 	timeout time.Duration
 }
 
-func NewPageTester(page *rod.Page, timeout time.Duration) *PageTester {
+func NewPageTester(ctx context.Context, timeout time.Duration) *PageTester {
 	return &PageTester{
-		page:    page,
+		ctx:     ctx,
 		timeout: timeout,
 		result: &TestResult{
 			Passed: true,
@@ -114,7 +114,11 @@ func (pt *PageTester) Navigate(url string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	pt.result.Error = pt.page.Timeout(pt.timeout).Navigate(url)
+	
+	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
+	defer cancel()
+	
+	pt.result.Error = chromedp.Navigate(url).Do(timeoutCtx)
 	return pt
 }
 
@@ -122,12 +126,11 @@ func (pt *PageTester) Click(selector string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	element, err := pt.page.Timeout(pt.timeout).Element(selector)
-	if err != nil {
-		pt.result.Error = err
-		return pt
-	}
-	pt.result.Error = element.Click(proto.InputMouseButtonLeft, 1)
+	
+	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
+	defer cancel()
+	
+	pt.result.Error = chromedp.Click(selector, chromedp.NodeVisible).Do(timeoutCtx)
 	return pt
 }
 
@@ -135,12 +138,11 @@ func (pt *PageTester) Type(selector, text string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	element, err := pt.page.Timeout(pt.timeout).Element(selector)
-	if err != nil {
-		pt.result.Error = err
-		return pt
-	}
-	pt.result.Error = element.Input(text)
+	
+	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
+	defer cancel()
+	
+	pt.result.Error = chromedp.SendKeys(selector, text, chromedp.NodeVisible).Do(timeoutCtx)
 	return pt
 }
 
@@ -148,8 +150,11 @@ func (pt *PageTester) WaitFor(selector string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	_, err := pt.page.Timeout(pt.timeout).Element(selector)
-	pt.result.Error = err
+	
+	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
+	defer cancel()
+	
+	pt.result.Error = chromedp.WaitVisible(selector).Do(timeoutCtx)
 	return pt
 }
 
@@ -157,16 +162,17 @@ func (pt *PageTester) AssertText(selector, expected string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	element, err := pt.page.Timeout(pt.timeout).Element(selector)
+	
+	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
+	defer cancel()
+	
+	var text string
+	err := chromedp.Text(selector, &text, chromedp.NodeVisible).Do(timeoutCtx)
 	if err != nil {
 		pt.result.Error = err
 		return pt
 	}
-	text, err := element.Text()
-	if err != nil {
-		pt.result.Error = err
-		return pt
-	}
+	
 	if text != expected {
 		pt.result.Error = &AssertionError{
 			Expected: expected,

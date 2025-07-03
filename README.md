@@ -1,6 +1,6 @@
 # FastTest
 
-A simple and powerful browser testing framework built on [go-rod/rod](https://github.com/go-rod/rod) with a focus on DSL-based test files for easy, code-free testing.
+A simple and powerful browser testing framework built on [chromedp](https://github.com/chromedp/chromedp) with a focus on DSL-based test files for easy, code-free testing.
 
 ## Features
 
@@ -10,7 +10,7 @@ A simple and powerful browser testing framework built on [go-rod/rod](https://gi
 - **Console Error Detection**: Automatically fail tests when console errors occur
 - **Configuration Files**: YAML/JSON config files for project-wide settings
 - **Flexible CLI**: Run tests from command line with various options
-- **Fast Execution**: Built on the efficient go-rod library
+- **Fast Execution**: Built on the efficient chromedp library
 
 ## Installation
 

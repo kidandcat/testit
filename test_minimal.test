@@ -1,0 +1,5 @@
+test "Jairo cloud"
+  navigate "https://jairo.cloud"
+  assert_title "Jairo Caro-Accino Viciana - Software Engineer"
+  screenshot
+  assert_element_exists "body"

@@ -2,6 +2,7 @@ package fasttest
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image/color"
 	"image/png"
@@ -11,13 +12,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/proto"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/runtime"
+	"github.com/chromedp/chromedp"
 )
 
 type Runner struct {
-	browser       *rod.Browser
+	allocCtx      context.Context
+	allocCancel   context.CancelFunc
 	config        *Config
 	tests         []Test
 	results       []TestResult
@@ -82,15 +84,22 @@ func NewRunner(config *Config) *Runner {
 }
 
 func (r *Runner) Start() error {
-	l := launcher.New().Headless(r.config.Headless)
-	url := l.MustLaunch()
-	r.browser = rod.New().ControlURL(url).MustConnect()
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", r.config.Headless),
+		chromedp.Flag("disable-gpu", r.config.Headless),
+		chromedp.Flag("no-sandbox", true),
+	)
+	
+	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	r.allocCtx = allocCtx
+	r.allocCancel = cancel
+	
 	return nil
 }
 
 func (r *Runner) Stop() error {
-	if r.browser != nil {
-		return r.browser.Close()
+	if r.allocCancel != nil {
+		r.allocCancel()
 	}
 	return nil
 }
@@ -115,17 +124,56 @@ func (r *Runner) runTest(test Test) TestResult {
 	result := TestResult{
 		Name:   test.Name,
 		Passed: true,
+		Errors: []ConsoleError{},
 	}
 	
-	page := r.browser.MustPage()
-	defer page.MustClose()
+	// Check if browser has been started
+	if r.allocCtx == nil {
+		result.Passed = false
+		result.Error = fmt.Errorf("browser not started")
+		return result
+	}
 	
-	page = page.Timeout(r.config.Timeout)
+	// Create a new browser context for this test
+	ctx, cancel := chromedp.NewContext(r.allocCtx)
+	defer cancel()
 	
-	r.setupConsoleListener(page, &result)
+	// Initialize the browser by starting it
+	// We don't need to navigate to about:blank - chromedp handles this
 	
+	// Set up console listener
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		switch ev := ev.(type) {
+		case *runtime.EventConsoleAPICalled:
+			if ev.Type == runtime.APITypeError {
+				var message string
+				if len(ev.Args) > 0 && ev.Args[0].Value != nil {
+					message = string(ev.Args[0].Value)
+				}
+				
+				consoleErr := ConsoleError{
+					Message:   message,
+					Type:      string(ev.Type),
+					Timestamp: time.Now(),
+				}
+				
+				// Get current URL
+				var url string
+				chromedp.Run(ctx, chromedp.Location(&url))
+				consoleErr.URL = url
+				
+				if r.config.ErrorFilter == nil || !r.config.ErrorFilter(consoleErr) {
+					r.mu.Lock()
+					result.Errors = append(result.Errors, consoleErr)
+					r.mu.Unlock()
+				}
+			}
+		}
+	})
+	
+	// Run steps
 	for _, step := range test.Steps {
-		if err := r.executeStep(page, step, test.Name); err != nil {
+		if err := r.executeStep(ctx, step, test.Name); err != nil {
 			result.Passed = false
 			result.Error = err
 			break
@@ -143,66 +191,23 @@ func (r *Runner) runTest(test Test) TestResult {
 	return result
 }
 
-func (r *Runner) setupConsoleListener(page *rod.Page, result *TestResult) {
-	go page.EachEvent(func(e *proto.RuntimeConsoleAPICalled) {
-		if e.Type == proto.RuntimeConsoleAPICalledTypeError {
-			consoleErr := ConsoleError{
-				Message:   e.Args[0].Preview.Properties[0].Value,
-				Type:      string(e.Type),
-				Timestamp: time.Now(),
-				URL:       page.MustInfo().URL,
-			}
-			
-			if r.config.ErrorFilter == nil || !r.config.ErrorFilter(consoleErr) {
-				r.mu.Lock()
-				result.Errors = append(result.Errors, consoleErr)
-				r.mu.Unlock()
-			}
-		}
-	})()
-}
-
-func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
-	// Execute the step
-	var err error
+func (r *Runner) executeStep(ctx context.Context, step Step, testName string) error {
 	switch step.Action {
 	case "navigate":
-		err = page.Navigate(step.Target)
-		if err == nil {
-			// Wait for page to be stable after navigation
-			err = page.WaitStable(500 * time.Millisecond)
-		}
+		return chromedp.Run(ctx, chromedp.Navigate(step.Target))
+		
 	case "click":
-		element, err := page.Element(step.Target)
-		if err != nil {
-			return err
-		}
-		err = element.Click(proto.InputMouseButtonLeft, 1)
-		if err == nil {
-			// Wait for page to be stable after click
-			err = page.WaitStable(500 * time.Millisecond)
-		}
-		return err
+		return chromedp.Run(ctx, chromedp.Click(step.Target, chromedp.NodeVisible))
+		
 	case "type":
-		element, err := page.Element(step.Target)
-		if err != nil {
-			return err
-		}
-		err = element.Input(step.Value)
-		if err == nil {
-			// Wait for page to be stable after typing
-			err = page.WaitStable(500 * time.Millisecond)
-		}
-		return err
+		return chromedp.Run(ctx, chromedp.SendKeys(step.Target, step.Value, chromedp.NodeVisible))
+		
 	case "wait_for":
-		_, err := page.Element(step.Target)
-		return err
+		return chromedp.Run(ctx, chromedp.WaitVisible(step.Target))
+		
 	case "assert_text":
-		element, err := page.Element(step.Target)
-		if err != nil {
-			return err
-		}
-		text, err := element.Text()
+		var text string
+		err := chromedp.Run(ctx, chromedp.Text(step.Target, &text, chromedp.NodeVisible))
 		if err != nil {
 			return err
 		}
@@ -212,25 +217,24 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 		return nil
 		
 	case "assert_element_exists":
-		_, err := page.Element(step.Target)
-		if err != nil {
+		var nodes []*cdp.Node
+		err := chromedp.Run(ctx, chromedp.Nodes(step.Target, &nodes))
+		if err != nil || len(nodes) == 0 {
 			return fmt.Errorf("element not found: %s", step.Target)
 		}
 		return nil
 		
 	case "assert_element_not_exists":
-		_, err := page.Element(step.Target)
-		if err == nil {
+		var nodes []*cdp.Node
+		err := chromedp.Run(ctx, chromedp.Nodes(step.Target, &nodes))
+		if err == nil && len(nodes) > 0 {
 			return fmt.Errorf("element should not exist: %s", step.Target)
 		}
 		return nil
 		
 	case "assert_text_contains":
-		element, err := page.Element(step.Target)
-		if err != nil {
-			return err
-		}
-		text, err := element.Text()
+		var text string
+		err := chromedp.Run(ctx, chromedp.Text(step.Target, &text, chromedp.NodeVisible))
 		if err != nil {
 			return err
 		}
@@ -240,14 +244,22 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 		return nil
 		
 	case "assert_url":
-		currentURL := page.MustInfo().URL
+		var currentURL string
+		err := chromedp.Run(ctx, chromedp.Location(&currentURL))
+		if err != nil {
+			return err
+		}
 		if currentURL != step.Target {
 			return fmt.Errorf("expected URL '%s', got '%s'", step.Target, currentURL)
 		}
 		return nil
 		
 	case "assert_title":
-		title := page.MustInfo().Title
+		var title string
+		err := chromedp.Run(ctx, chromedp.Title(&title))
+		if err != nil {
+			return err
+		}
 		if title != step.Target {
 			return fmt.Errorf("expected title '%s', got '%s'", step.Target, title)
 		}
@@ -260,115 +272,102 @@ func (r *Runner) executeStep(page *rod.Page, step Step, testName string) error {
 			return fmt.Errorf("invalid assert_attribute format")
 		}
 		selector, attribute := parts[0], parts[1]
-		element, err := page.Element(selector)
+		
+		var value string
+		var ok bool
+		err := chromedp.Run(ctx, chromedp.AttributeValue(selector, attribute, &value, &ok))
 		if err != nil {
 			return err
 		}
-		value, err := element.Attribute(attribute)
-		if err != nil {
-			return err
+		if !ok {
+			return fmt.Errorf("attribute '%s' not found", attribute)
 		}
-		if value == nil || *value != step.Value {
-			actual := "<nil>"
-			if value != nil {
-				actual = *value
-			}
-			return fmt.Errorf("expected attribute '%s' to be '%s', got '%s'", attribute, step.Value, actual)
+		if value != step.Value {
+			return fmt.Errorf("expected attribute '%s' to be '%s', got '%s'", attribute, step.Value, value)
 		}
 		return nil
 		
 	case "screenshot":
-		return r.takeScreenshot(page, step.Target, testName)
+		return r.takeScreenshot(ctx, step.Target, testName)
 		
 	case "wait_for_text":
-		element, err := page.Element(step.Target)
-		if err != nil {
+		// First wait for element to be visible
+		if err := chromedp.Run(ctx, chromedp.WaitVisible(step.Target)); err != nil {
 			return err
 		}
-		err = element.WaitStable(r.config.Timeout)
-		if err != nil {
-			return err
-		}
-		text, err := element.Text()
-		if err != nil {
-			return err
-		}
-		if !strings.Contains(text, step.Value) {
-			return fmt.Errorf("timeout waiting for text '%s' in element", step.Value)
-		}
-		return nil
+		// Then poll for text content
+		return chromedp.Run(ctx,
+			chromedp.Poll(step.Target, func(ctx context.Context, node *runtime.RemoteObject) error {
+				var text string
+				if err := chromedp.Run(ctx, chromedp.Text(step.Target, &text, chromedp.NodeVisible)); err != nil {
+					return err
+				}
+				if strings.Contains(text, step.Value) {
+					return nil
+				}
+				return fmt.Errorf("waiting for text")
+			}, chromedp.WithPollingInterval(100*time.Millisecond)),
+		)
 		
 	case "wait_for_url":
-		start := time.Now()
-		for {
-			currentURL := page.MustInfo().URL
-			if strings.Contains(currentURL, step.Target) {
-				return nil
+		// Poll for URL to match
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		
+		deadline, ok := ctx.Deadline()
+		if !ok {
+			deadline = time.Now().Add(r.config.Timeout)
+		}
+		
+		for time.Now().Before(deadline) {
+			var currentURL string
+			if err := chromedp.Run(ctx, chromedp.Location(&currentURL)); err == nil {
+				if strings.Contains(currentURL, step.Target) {
+					return nil
+				}
 			}
-			if time.Since(start) > r.config.Timeout {
+			select {
+			case <-ticker.C:
+				continue
+			case <-ctx.Done():
 				return fmt.Errorf("timeout waiting for URL to contain '%s'", step.Target)
 			}
-			time.Sleep(100 * time.Millisecond)
 		}
+		return fmt.Errorf("timeout waiting for URL to contain '%s'", step.Target)
 		
 	case "select":
-		element, err := page.Element(step.Target)
-		if err != nil {
+		// First click to open dropdown
+		if err := chromedp.Run(ctx, chromedp.Click(step.Target, chromedp.NodeVisible)); err != nil {
 			return err
 		}
-		err = element.Select([]string{step.Value}, true, rod.SelectorTypeText)
-		if err == nil {
-			// Wait for page to be stable after select
-			err = page.WaitStable(500 * time.Millisecond)
-		}
-		return err
+		// Then select the option
+		return chromedp.Run(ctx, chromedp.SetValue(step.Target, step.Value))
 		
 	case "check":
-		element, err := page.Element(step.Target)
-		if err != nil {
-			return err
-		}
-		// Click the checkbox to check it
-		err = element.Click(proto.InputMouseButtonLeft, 1)
-		if err == nil {
-			// Wait for page to be stable after check
-			err = page.WaitStable(500 * time.Millisecond)
-		}
-		return err
+		// Click checkbox to check it
+		return chromedp.Run(ctx, chromedp.Click(step.Target, chromedp.NodeVisible))
 		
 	case "uncheck":
-		element, err := page.Element(step.Target)
-		if err != nil {
-			return err
-		}
-		// Click the checkbox to uncheck it
-		err = element.Click(proto.InputMouseButtonLeft, 1)
-		if err == nil {
-			// Wait for page to be stable after uncheck
-			err = page.WaitStable(500 * time.Millisecond)
-		}
-		return err
+		// Click checkbox to uncheck it
+		return chromedp.Run(ctx, chromedp.Click(step.Target, chromedp.NodeVisible))
 		
 	case "hover":
-		element, err := page.Element(step.Target)
-		if err != nil {
+		// Move mouse over element
+		var nodes []*cdp.Node
+		if err := chromedp.Run(ctx, chromedp.Nodes(step.Target, &nodes)); err != nil {
 			return err
 		}
-		err = element.Hover()
-		if err == nil {
-			// Wait for page to be stable after hover
-			err = page.WaitStable(500 * time.Millisecond)
+		if len(nodes) == 0 {
+			return fmt.Errorf("element not found: %s", step.Target)
 		}
-		return err
+		return chromedp.Run(ctx, chromedp.MouseClickNode(nodes[0]))
 		
 	default:
 		return fmt.Errorf("unknown action: %s", step.Action)
 	}
-	
-	return err
 }
 
-func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string) error {
+func (r *Runner) takeScreenshot(ctx context.Context, filename string, testName string) error {
 	if filename == "" {
 		// Sanitize test name for filename
 		safeTestName := strings.ReplaceAll(testName, " ", "_")
@@ -395,7 +394,10 @@ func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string
 	}
 	
 	// Take current screenshot
-	screenshot, err := page.Screenshot(true, nil)
+	var screenshot []byte
+	err = chromedp.Run(ctx,
+		chromedp.FullScreenshot(&screenshot, 100),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to take screenshot: %v", err)
 	}
@@ -436,7 +438,6 @@ func (r *Runner) takeScreenshot(page *rod.Page, filename string, testName string
 	
 	return nil
 }
-
 
 func (r *Runner) compareImages(baseline, current []byte) (float64, error) {
 	baselineImg, err := png.Decode(bytes.NewReader(baseline))

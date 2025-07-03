@@ -1,8 +1,0 @@
-# Test single screenshot command behavior
-
-test "Single screenshot command behavior"
-  navigate "https://example.com"
-  wait_for "h1"
-  
-  # Single screenshot command (no args) - should save with test name if no file exists
-  screenshot
