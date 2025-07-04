@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/kidandcat/fasttest/pkg/config"
 	"github.com/kidandcat/fasttest/pkg/fasttest"
 	"github.com/kidandcat/fasttest/pkg/parser"
@@ -19,6 +21,7 @@ const (
 	colorGreen  = "\033[32m"
 	colorRed    = "\033[31m"
 	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
 )
 
 func main() {
@@ -113,34 +116,37 @@ func main() {
 
 	fmt.Printf("%sRunning %d tests from %d files...%s\n\n", colorYellow, totalTests, len(testFiles), colorReset)
 
-	results := runner.Run()
+	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	s.Start()
 
-	passed := 0
-	failed := 0
+	resultsChan := make(chan fasttest.TestResult)
+	var wg sync.WaitGroup
 
-	for _, result := range results {
-		if result.Passed {
-			fmt.Printf("%s✓ %s (%.2fs)%s\n", colorGreen, result.Name, result.Duration.Seconds(), colorReset)
-			passed++
-		} else {
-			fmt.Printf("%s✗ %s (%.2fs)%s\n", colorRed, result.Name, result.Duration.Seconds(), colorReset)
-			if result.Error != nil {
-				fmt.Printf("  %sError: %v%s\n", colorRed, result.Error, colorReset)
-			}
-			if len(result.Errors) > 0 {
-				fmt.Printf("  %sConsole errors:%s\n", colorRed, colorReset)
-				for _, err := range result.Errors {
-					fmt.Printf("    %s- %s at %s%s\n", colorRed, err.Message, err.URL, colorReset)
+	go func() {
+		for result := range resultsChan {
+			s.Stop()
+			if result.Passed {
+				fmt.Printf("%s✓ PASS%s %s (%s)\n", colorGreen, colorReset, result.Name, result.Duration.Round(time.Millisecond))
+			} else {
+				fmt.Printf("%s✗ FAIL%s %s (%s)\n", colorRed, colorReset, result.Name, result.Duration.Round(time.Millisecond))
+				if result.Error != nil {
+					fmt.Printf("  %sError: %v%s\n", colorRed, result.Error, colorReset)
 				}
 			}
+			s.Start()
+			wg.Done()
+		}
+	}()
+
+	results := runner.RunWithProgress(resultsChan, &wg)
+	wg.Wait()
+	s.Stop()
+
+	failed := 0
+	for _, result := range results {
+		if !result.Passed {
 			failed++
 		}
-	}
-
-	if failed > 0 {
-		fmt.Printf("\n%s%d passed%s, %s%d failed%s\n", colorGreen, passed, colorReset, colorRed, failed, colorReset)
-	} else {
-		fmt.Printf("\n%s%d passed%s, %d failed\n", colorGreen, passed, colorReset, failed)
 	}
 
 	if failed > 0 {

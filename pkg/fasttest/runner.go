@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"image"
 	"image/color"
 	"image/png"
 	"os"
@@ -26,6 +27,7 @@ type Runner struct {
 	mu            sync.Mutex
 	consoleErrors []ConsoleError
 	screenshotCounter map[string]int
+	snapshotCounter   map[string]int
 }
 
 type Config struct {
@@ -36,6 +38,8 @@ type Config struct {
 	ScreenshotDir     string
 	UpdateScreenshots bool
 	ScreenshotThreshold float64
+	SnapshotDir       string
+	UpdateSnapshots   bool
 }
 
 type Test struct {
@@ -72,14 +76,20 @@ func NewRunner(config *Config) *Runner {
 			FailOnConsoleError: true,
 			ScreenshotDir:     "__screenshots__",
 			ScreenshotThreshold: 0.0,
+			SnapshotDir:       "__snapshots__",
+			UpdateSnapshots:   false,
 		}
 	}
 	if config.ScreenshotDir == "" {
 		config.ScreenshotDir = "__screenshots__"
 	}
+	if config.SnapshotDir == "" {
+		config.SnapshotDir = "__snapshots__"
+	}
 	return &Runner{
 		config: config,
 		screenshotCounter: make(map[string]int),
+		snapshotCounter:   make(map[string]int),
 	}
 }
 
@@ -108,6 +118,8 @@ func (r *Runner) AddTest(test Test) {
 	r.tests = append(r.tests, test)
 }
 
+
+
 func (r *Runner) Run() []TestResult {
 	r.results = make([]TestResult, 0, len(r.tests))
 	
@@ -134,12 +146,20 @@ func (r *Runner) runTest(test Test) TestResult {
 		return result
 	}
 	
-	// Create a new browser context for this test
+	// Create a new browser context for this test with timeout
 	ctx, cancel := chromedp.NewContext(r.allocCtx)
 	defer cancel()
 	
-	// Initialize the browser by starting it
-	// We don't need to navigate to about:blank - chromedp handles this
+	// Apply timeout from config
+	ctx, cancel = context.WithTimeout(ctx, r.config.Timeout)
+	defer cancel()
+	
+	// Initialize the browser by navigating to about:blank
+	if err := chromedp.Run(ctx, chromedp.Navigate("about:blank")); err != nil {
+		result.Passed = false
+		result.Error = fmt.Errorf("failed to initialize browser: %v", err)
+		return result
+	}
 	
 	// Set up console listener
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
@@ -188,6 +208,7 @@ func (r *Runner) runTest(test Test) TestResult {
 	}
 	
 	result.Duration = time.Since(start)
+	
 	return result
 }
 
@@ -290,6 +311,9 @@ func (r *Runner) executeStep(ctx context.Context, step Step, testName string) er
 	case "screenshot":
 		return r.takeScreenshot(ctx, step.Target, testName)
 		
+	case "snapshot":
+		return r.takeSnapshot(ctx, step.Target, testName)
+		
 	case "wait_for_text":
 		// First wait for element to be visible
 		if err := chromedp.Run(ctx, chromedp.WaitVisible(step.Target)); err != nil {
@@ -362,6 +386,24 @@ func (r *Runner) executeStep(ctx context.Context, step Step, testName string) er
 		}
 		return chromedp.Run(ctx, chromedp.MouseClickNode(nodes[0]))
 		
+	case "assert_text_visible":
+		// First wait for the body element to be ready
+		if err := chromedp.Run(ctx, chromedp.WaitReady("body")); err != nil {
+			return fmt.Errorf("failed to wait for body element: %v", err)
+		}
+		
+		// Get all visible text from the body element
+		var text string
+		err := chromedp.Run(ctx, chromedp.Text("body", &text))
+		if err != nil {
+			return fmt.Errorf("failed to get text from body: %v", err)
+		}
+		// Check if the expected text is contained anywhere in the page
+		if !strings.Contains(text, step.Value) {
+			return fmt.Errorf("text '%s' not found on page", step.Value)
+		}
+		return nil
+		
 	default:
 		return fmt.Errorf("unknown action: %s", step.Action)
 	}
@@ -413,15 +455,21 @@ func (r *Runner) takeScreenshot(ctx context.Context, filename string, testName s
 		}
 		
 		// Compare screenshots
-		diff, err := r.compareImages(baselineData, screenshot)
+		diff, diffImage, err := r.compareImages(baselineData, screenshot)
 		if err != nil {
 			return fmt.Errorf("failed to compare screenshots: %v", err)
 		}
 		
 		if diff > r.config.ScreenshotThreshold {
-			// Save diff screenshot for debugging
-			diffPath := strings.TrimSuffix(path, ".png") + ".diff.png"
-			os.WriteFile(diffPath, screenshot, 0644)
+			// Save the actual screenshot for reference
+			actualPath := strings.TrimSuffix(path, ".png") + ".actual.png"
+			os.WriteFile(actualPath, screenshot, 0644)
+			
+			// Save diff image showing the differences
+			if diffImage != nil {
+				diffPath := strings.TrimSuffix(path, ".png") + ".diff.png"
+				os.WriteFile(diffPath, diffImage, 0644)
+			}
 			
 			return fmt.Errorf("screenshot differs from baseline by %.2f%% (threshold: %.2f%%). Delete the old screenshot at %s to save the new one", diff*100, r.config.ScreenshotThreshold*100, path)
 		}
@@ -439,25 +487,28 @@ func (r *Runner) takeScreenshot(ctx context.Context, filename string, testName s
 	return nil
 }
 
-func (r *Runner) compareImages(baseline, current []byte) (float64, error) {
+func (r *Runner) compareImages(baseline, current []byte) (float64, []byte, error) {
 	baselineImg, err := png.Decode(bytes.NewReader(baseline))
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	
 	currentImg, err := png.Decode(bytes.NewReader(current))
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	
 	// Simple pixel-by-pixel comparison
 	bounds := baselineImg.Bounds()
 	if bounds != currentImg.Bounds() {
-		return 1.0, nil // 100% different if sizes don't match
+		return 1.0, nil, nil // 100% different if sizes don't match
 	}
 	
 	totalPixels := bounds.Dx() * bounds.Dy()
 	differentPixels := 0
+	
+	// Create diff image
+	diffImg := image.NewRGBA(bounds)
 	
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -465,15 +516,186 @@ func (r *Runner) compareImages(baseline, current []byte) (float64, error) {
 			c2 := currentImg.At(x, y)
 			if !colorsEqual(c1, c2) {
 				differentPixels++
+				// Highlight differences in red
+				diffImg.Set(x, y, color.RGBA{255, 0, 0, 255})
+			} else {
+				// Show matching pixels as grayscale from baseline
+				r1, g1, b1, _ := c1.RGBA()
+				gray := uint8((r1 + g1 + b1) / 3 / 256)
+				diffImg.Set(x, y, color.RGBA{gray, gray, gray, 128})
 			}
 		}
 	}
 	
-	return float64(differentPixels) / float64(totalPixels), nil
+	// Encode diff image
+	var diffBuf bytes.Buffer
+	if err := png.Encode(&diffBuf, diffImg); err != nil {
+		return 0, nil, err
+	}
+	
+	return float64(differentPixels) / float64(totalPixels), diffBuf.Bytes(), nil
 }
 
 func colorsEqual(c1, c2 color.Color) bool {
 	r1, g1, b1, a1 := c1.RGBA()
 	r2, g2, b2, a2 := c2.RGBA()
 	return r1 == r2 && g1 == g2 && b1 == b2 && a1 == a2
+}
+
+func (r *Runner) takeSnapshot(ctx context.Context, filename string, testName string) error {
+	if filename == "" {
+		// Sanitize test name for filename
+		safeTestName := strings.ReplaceAll(testName, " ", "_")
+		safeTestName = strings.ReplaceAll(safeTestName, "/", "_")
+		safeTestName = strings.ReplaceAll(safeTestName, "\\", "_")
+		
+		// Get counter for this test
+		r.mu.Lock()
+		r.snapshotCounter[testName]++
+		counter := r.snapshotCounter[testName]
+		r.mu.Unlock()
+		
+		if counter == 1 {
+			filename = fmt.Sprintf("%s.html", safeTestName)
+		} else {
+			filename = fmt.Sprintf("%s_%d.html", safeTestName, counter)
+		}
+	}
+	
+	// Create snapshot directory if it doesn't exist
+	err := os.MkdirAll(r.config.SnapshotDir, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create snapshot directory: %v", err)
+	}
+	
+	// Capture current HTML
+	var html string
+	err = chromedp.Run(ctx,
+		chromedp.Evaluate(`document.documentElement.outerHTML`, &html),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to capture HTML: %v", err)
+	}
+	
+	path := filepath.Join(r.config.SnapshotDir, filename)
+	
+	// Check if snapshot already exists
+	if _, err := os.Stat(path); err == nil {
+		// Snapshot exists, load and compare
+		baselineData, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read existing snapshot: %v", err)
+		}
+		
+		// Compare snapshots
+		if !r.compareSnapshots(string(baselineData), html) {
+			// Save the actual snapshot for reference
+			actualPath := strings.TrimSuffix(path, ".html") + ".actual.html"
+			os.WriteFile(actualPath, []byte(html), 0644)
+			
+			// Generate and save diff
+			diffHTML := r.generateHTMLDiff(string(baselineData), html)
+			diffPath := strings.TrimSuffix(path, ".html") + ".diff.html"
+			os.WriteFile(diffPath, []byte(diffHTML), 0644)
+			
+			return fmt.Errorf("snapshot differs from baseline. Delete the old snapshot at %s to save the new one", path)
+		}
+		
+		// Snapshots match, no need to save
+		return nil
+	}
+	
+	// Snapshot doesn't exist, save it
+	err = os.WriteFile(path, []byte(html), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to save snapshot: %v", err)
+	}
+	
+	return nil
+}
+
+func (r *Runner) compareSnapshots(baseline, current string) bool {
+	// Normalize HTML for comparison
+	baseline = r.normalizeHTML(baseline)
+	current = r.normalizeHTML(current)
+	
+	return baseline == current
+}
+
+func (r *Runner) normalizeHTML(html string) string {
+	// Remove extra whitespace between tags
+	html = strings.ReplaceAll(html, "\n", " ")
+	html = strings.ReplaceAll(html, "\r", " ")
+	html = strings.ReplaceAll(html, "\t", " ")
+	
+	// Collapse multiple spaces into single space
+	for strings.Contains(html, "  ") {
+		html = strings.ReplaceAll(html, "  ", " ")
+	}
+	
+	// Remove spaces between tags
+	html = strings.ReplaceAll(html, "> <", "><")
+	html = strings.ReplaceAll(html, "> ", ">")
+	html = strings.ReplaceAll(html, " <", "<")
+	
+	return strings.TrimSpace(html)
+}
+
+func (r *Runner) generateHTMLDiff(baseline, current string) string {
+	// Simple diff visualization
+	// In a real implementation, you might want to use a proper diff library
+	diffHTML := `<!DOCTYPE html>
+<html>
+<head>
+    <title>Snapshot Diff</title>
+    <style>
+        body { font-family: monospace; white-space: pre-wrap; }
+        .added { background-color: #90EE90; }
+        .removed { background-color: #FFB6C1; }
+        .header { font-weight: bold; margin: 20px 0 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">Snapshot Diff</div>
+    <div class="header">Expected:</div>
+    <div class="removed">` + escapeHTML(r.normalizeHTML(baseline)) + `</div>
+    <div class="header">Actual:</div>
+    <div class="added">` + escapeHTML(r.normalizeHTML(current)) + `</div>
+</body>
+</html>`
+	
+	return diffHTML
+}
+
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
+}
+
+func (r *Runner) RunWithProgress(resultsChan chan<- TestResult, wg *sync.WaitGroup) []TestResult {
+	r.results = make([]TestResult, 0, len(r.tests))
+
+	testChan := make(chan Test, len(r.tests))
+
+	numWorkers := 4 // Or make this configurable
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			for test := range testChan {
+				result := r.runTest(test)
+				wg.Add(1)
+				resultsChan <- result
+			}
+		}()
+	}
+
+	for _, test := range r.tests {
+		testChan <- test
+	}
+	close(testChan)
+
+	return r.results
 }
