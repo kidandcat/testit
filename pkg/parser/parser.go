@@ -39,16 +39,16 @@ func (p *Parser) parse(scanner *bufio.Scanner) ([]fasttest.Test, error) {
 	for scanner.Scan() {
 		lineNum++
 		line := strings.TrimSpace(scanner.Text())
-		
+
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		
+
 		if strings.HasPrefix(line, "test ") {
 			if currentTest != nil {
 				tests = append(tests, *currentTest)
 			}
-			
+
 			testNamePart := strings.TrimPrefix(line, "test ")
 			testName := strings.Trim(testNamePart, `"'`)
 			currentTest = &fasttest.Test{
@@ -64,15 +64,15 @@ func (p *Parser) parse(scanner *bufio.Scanner) ([]fasttest.Test, error) {
 			}
 		}
 	}
-	
+
 	if currentTest != nil {
 		tests = append(tests, *currentTest)
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return tests, nil
 }
 
@@ -81,9 +81,9 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 	if len(parts) == 0 {
 		return nil, nil
 	}
-	
+
 	action := parts[0]
-	
+
 	switch action {
 	case "navigate":
 		if len(parts) < 2 {
@@ -93,7 +93,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "navigate",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "click":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: click requires a selector", lineNum)
@@ -102,7 +102,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "click",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "type":
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("line %d: type requires a selector and value", lineNum)
@@ -114,7 +114,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: selector,
 			Value:  value,
 		}, nil
-		
+
 	case "wait_for":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: wait_for requires a selector", lineNum)
@@ -123,7 +123,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "wait_for",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "assert_text":
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("line %d: assert_text requires a selector and expected text", lineNum)
@@ -135,7 +135,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: selector,
 			Value:  expectedText,
 		}, nil
-		
+
 	case "assert_element_exists":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: assert_element_exists requires a selector", lineNum)
@@ -144,7 +144,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "assert_element_exists",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "assert_element_not_exists":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: assert_element_not_exists requires a selector", lineNum)
@@ -153,7 +153,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "assert_element_not_exists",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "assert_text_contains":
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("line %d: assert_text_contains requires a selector and text", lineNum)
@@ -165,7 +165,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: selector,
 			Value:  text,
 		}, nil
-		
+
 	case "assert_url":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: assert_url requires a URL pattern", lineNum)
@@ -174,7 +174,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "assert_url",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "assert_title":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: assert_title requires expected title", lineNum)
@@ -183,7 +183,16 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "assert_title",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
+	case "assert_text_visible":
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("line %d: assert_text_visible requires text to search for", lineNum)
+		}
+		return &fasttest.Step{
+			Action: "assert_text_visible",
+			Value:  strings.Trim(strings.Join(parts[1:], " "), `"'`),
+		}, nil
+
 	case "assert_attribute":
 		if len(parts) < 4 {
 			return nil, fmt.Errorf("line %d: assert_attribute requires selector, attribute name, and expected value", lineNum)
@@ -196,7 +205,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: selector + "|" + attribute,
 			Value:  value,
 		}, nil
-		
+
 	case "screenshot":
 		filename := ""
 		if len(parts) >= 2 {
@@ -206,7 +215,17 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "screenshot",
 			Target: filename,
 		}, nil
-		
+
+	case "snapshot":
+		filename := ""
+		if len(parts) >= 2 {
+			filename = strings.Trim(strings.Join(parts[1:], " "), `"'`)
+		}
+		return &fasttest.Step{
+			Action: "snapshot",
+			Target: filename,
+		}, nil
+
 	case "wait_for_text":
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("line %d: wait_for_text requires a selector and text", lineNum)
@@ -218,7 +237,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: selector,
 			Value:  text,
 		}, nil
-		
+
 	case "wait_for_url":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: wait_for_url requires a URL pattern", lineNum)
@@ -227,7 +246,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "wait_for_url",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "select":
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("line %d: select requires a selector and value", lineNum)
@@ -239,7 +258,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Target: selector,
 			Value:  value,
 		}, nil
-		
+
 	case "check":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: check requires a selector", lineNum)
@@ -248,7 +267,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "check",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "uncheck":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: uncheck requires a selector", lineNum)
@@ -257,7 +276,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "uncheck",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	case "hover":
 		if len(parts) < 2 {
 			return nil, fmt.Errorf("line %d: hover requires a selector", lineNum)
@@ -266,7 +285,7 @@ func (p *Parser) parseLine(line string, lineNum int) (*fasttest.Step, error) {
 			Action: "hover",
 			Target: strings.Trim(strings.Join(parts[1:], " "), `"'`),
 		}, nil
-		
+
 	default:
 		return nil, fmt.Errorf("line %d: unknown action: %s", lineNum, action)
 	}

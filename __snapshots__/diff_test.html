@@ -1,0 +1,21 @@
+<html><head>
+    <title>Snapshot Test Page</title>
+</head>
+<body>
+    <h1>Snapshot Test</h1>
+    <p>This is a test page for snapshot functionality.</p>
+    <div id="content">
+        <ul>
+            <li>Item 1</li>
+            <li>Item 2</li>
+            <li>Item 3</li>
+        </ul>
+    </div>
+    <button id="changeButton">Change Content</button>
+    <script>
+        document.getElementById('changeButton').addEventListener('click', function() {
+            document.getElementById('content').innerHTML = '<p>Content has been changed!</p>';
+        });
+    </script>
+
+</body></html>

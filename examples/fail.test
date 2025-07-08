@@ -1,0 +1,3 @@
+test "this will fail"
+    navigate "https://example.com"
+    assert_text ".nowhere" "this will fail"

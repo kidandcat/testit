@@ -7,7 +7,7 @@ import (
 
 var (
 	ErrNoTestResults = errors.New("no test results available")
-	ErrTimeout      = errors.New("test timeout")
+	ErrTimeout       = errors.New("test timeout")
 )
 
 type AssertionError struct {

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snapshot Diff</title>
+    <style>
+        body { font-family: monospace; white-space: pre-wrap; }
+        .added { background-color: #90EE90; }
+        .removed { background-color: #FFB6C1; }
+        .header { font-weight: bold; margin: 20px 0 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">Snapshot Diff</div>
+    <div class="header">Expected:</div>
+    <div class="removed">&lt;html&gt;&lt;head&gt;&lt;title&gt;Snapshot Test Page&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Snapshot Test&lt;/h1&gt;&lt;p&gt;This is a test page for snapshot functionality.&lt;/p&gt;&lt;div id=&quot;content&quot;&gt;&lt;ul&gt;&lt;li&gt;Item 1&lt;/li&gt;&lt;li&gt;Item 2&lt;/li&gt;&lt;li&gt;Item 3&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;button id=&quot;changeButton&quot;&gt;Change Content&lt;/button&gt;&lt;script&gt;document.getElementById(&#39;changeButton&#39;).addEventListener(&#39;click&#39;, function() { document.getElementById(&#39;content&#39;).innerHTML = &#39;&lt;p&gt;Content has been changed!&lt;/p&gt;&#39;; });&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;</div>
+    <div class="header">Actual:</div>
+    <div class="added">&lt;html&gt;&lt;head&gt;&lt;title&gt;Snapshot Test Page&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Snapshot Test&lt;/h1&gt;&lt;p&gt;This is a test page for snapshot functionality.&lt;/p&gt;&lt;div id=&quot;content&quot;&gt;&lt;p&gt;Content has been changed!&lt;/p&gt;&lt;/div&gt;&lt;button id=&quot;changeButton&quot;&gt;Change Content&lt;/button&gt;&lt;script&gt;document.getElementById(&#39;changeButton&#39;).addEventListener(&#39;click&#39;, function() { document.getElementById(&#39;content&#39;).innerHTML = &#39;&lt;p&gt;Content has been changed!&lt;/p&gt;&#39;; });&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;</div>
+</body>
+</html>

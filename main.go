@@ -27,7 +27,7 @@ const (
 func main() {
 	var (
 		headless           = flag.Bool("headless", true, "Run browser in headless mode")
-		timeout            = flag.Duration("timeout", 30*time.Second, "Test timeout")
+		timeout            = flag.Duration("timeout", 10*time.Second, "Test timeout")
 		failOnConsoleError = flag.Bool("fail-on-console-error", true, "Fail tests when console errors occur")
 		pattern            = flag.String("pattern", "*.test", "File pattern for test files")
 		configFile         = flag.String("config", "", "Config file path")

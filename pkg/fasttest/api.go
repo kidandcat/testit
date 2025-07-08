@@ -2,6 +2,7 @@ package fasttest
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -76,6 +77,14 @@ func (tb *TestBuilder) AssertText(selector, expected string) *TestBuilder {
 	return tb
 }
 
+func (tb *TestBuilder) AssertTextVisible(expected string) *TestBuilder {
+	tb.test.Steps = append(tb.test.Steps, Step{
+		Action: "assert_text_visible",
+		Value:  expected,
+	})
+	return tb
+}
+
 func (tb *TestBuilder) Run() TestResult {
 	tb.runner.AddTest(tb.test)
 	results := tb.runner.Run()
@@ -114,10 +123,10 @@ func (pt *PageTester) Navigate(url string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	
+
 	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
 	defer cancel()
-	
+
 	pt.result.Error = chromedp.Navigate(url).Do(timeoutCtx)
 	return pt
 }
@@ -126,10 +135,10 @@ func (pt *PageTester) Click(selector string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	
+
 	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
 	defer cancel()
-	
+
 	pt.result.Error = chromedp.Click(selector, chromedp.NodeVisible).Do(timeoutCtx)
 	return pt
 }
@@ -138,10 +147,10 @@ func (pt *PageTester) Type(selector, text string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	
+
 	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
 	defer cancel()
-	
+
 	pt.result.Error = chromedp.SendKeys(selector, text, chromedp.NodeVisible).Do(timeoutCtx)
 	return pt
 }
@@ -150,10 +159,10 @@ func (pt *PageTester) WaitFor(selector string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	
+
 	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
 	defer cancel()
-	
+
 	pt.result.Error = chromedp.WaitVisible(selector).Do(timeoutCtx)
 	return pt
 }
@@ -162,22 +171,49 @@ func (pt *PageTester) AssertText(selector, expected string) *PageTester {
 	if pt.result.Error != nil {
 		return pt
 	}
-	
+
 	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
 	defer cancel()
-	
+
 	var text string
 	err := chromedp.Text(selector, &text, chromedp.NodeVisible).Do(timeoutCtx)
 	if err != nil {
 		pt.result.Error = err
 		return pt
 	}
-	
+
 	if text != expected {
 		pt.result.Error = &AssertionError{
 			Expected: expected,
 			Actual:   text,
 			Message:  "text assertion failed",
+		}
+	}
+	return pt
+}
+
+func (pt *PageTester) AssertTextVisible(expected string) *PageTester {
+	if pt.result.Error != nil {
+		return pt
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(pt.ctx, pt.timeout)
+	defer cancel()
+
+	var text string
+	// Get all visible text from the body element
+	err := chromedp.Text("body", &text, chromedp.NodeVisible).Do(timeoutCtx)
+	if err != nil {
+		pt.result.Error = err
+		return pt
+	}
+
+	// Check if the expected text is contained anywhere in the page
+	if !strings.Contains(text, expected) {
+		pt.result.Error = &AssertionError{
+			Expected: expected,
+			Actual:   "[text not found in page]",
+			Message:  "text visibility assertion failed",
 		}
 	}
 	return pt

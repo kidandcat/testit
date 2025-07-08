@@ -220,7 +220,7 @@ func TestFindConfigFile(t *testing.T) {
 
 func TestFileConfigDefaults(t *testing.T) {
 	cfg := &FileConfig{}
-	
+
 	// Test that zero values are as expected
 	if cfg.Headless != nil {
 		t.Error("Expected Headless to be nil by default")

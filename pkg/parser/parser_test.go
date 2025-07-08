@@ -172,7 +172,7 @@ test "Test with comments"
 			wantErr: true,
 		},
 		{
-			name: "missing required argument", 
+			name: "missing required argument",
 			input: `test "Invalid"
   click`,
 			wantErr: true,

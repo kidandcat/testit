@@ -12,16 +12,16 @@ import (
 
 // FileConfig represents the configuration loaded from a file
 type FileConfig struct {
-	Headless            *bool                     `yaml:"headless" json:"headless"`
-	Timeout             *Duration                 `yaml:"timeout" json:"timeout"`
-	FailOnConsoleError  *bool                     `yaml:"failOnConsoleError" json:"failOnConsoleError"`
-	ScreenshotDir       string                    `yaml:"screenshotDir" json:"screenshotDir"`
-	UpdateScreenshots   bool                      `yaml:"updateScreenshots" json:"updateScreenshots"`
-	ScreenshotThreshold float64                   `yaml:"screenshotThreshold" json:"screenshotThreshold"`
-	ViewportWidth       int                       `yaml:"viewportWidth" json:"viewportWidth"`
-	ViewportHeight      int                       `yaml:"viewportHeight" json:"viewportHeight"`
-	BrowserType         string                    `yaml:"browserType" json:"browserType"`
-	ActionTimeouts      map[string]*Duration      `yaml:"actionTimeouts" json:"actionTimeouts"`
+	Headless            *bool                `yaml:"headless" json:"headless"`
+	Timeout             *Duration            `yaml:"timeout" json:"timeout"`
+	FailOnConsoleError  *bool                `yaml:"failOnConsoleError" json:"failOnConsoleError"`
+	ScreenshotDir       string               `yaml:"screenshotDir" json:"screenshotDir"`
+	UpdateScreenshots   bool                 `yaml:"updateScreenshots" json:"updateScreenshots"`
+	ScreenshotThreshold float64              `yaml:"screenshotThreshold" json:"screenshotThreshold"`
+	ViewportWidth       int                  `yaml:"viewportWidth" json:"viewportWidth"`
+	ViewportHeight      int                  `yaml:"viewportHeight" json:"viewportHeight"`
+	BrowserType         string               `yaml:"browserType" json:"browserType"`
+	ActionTimeouts      map[string]*Duration `yaml:"actionTimeouts" json:"actionTimeouts"`
 }
 
 // Duration is a custom type for unmarshaling duration strings
@@ -64,7 +64,7 @@ func LoadConfig(filename string) (*FileConfig, error) {
 
 	var config FileConfig
 	ext := filepath.Ext(filename)
-	
+
 	switch ext {
 	case ".yaml", ".yml":
 		err = yaml.Unmarshal(data, &config)
