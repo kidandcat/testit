@@ -15,7 +15,7 @@ A simple and powerful browser testing framework built on [chromedp](https://gith
 ## Installation
 
 ```bash
-go get github.com/kidandcat/fasttest
+go install github.com/kidandcat/fasttest@latest
 ```
 
 ## Quick Start

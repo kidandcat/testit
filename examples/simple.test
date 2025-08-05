@@ -2,4 +2,5 @@
 
 test "Navigate to Google"
   navigate "https://www.google.com"
-  wait_for "input[name='q']"
+  wait_for "textarea[name='q']"
+  assert_element_exists "textarea[name='q']"

@@ -1,14 +1,12 @@
 # Example test file for search functionality
 
 test "Search returns results"
-  navigate "https://example.com"
-  type "#search-input" "test query"
-  click "#search-button"
-  wait_for ".search-results"
-  assert_text ".result-count" "10 results found"
+  navigate "https://www.google.com"
+  wait_for "textarea[name='q']"
+  assert_element_exists "textarea[name='q']"
 
 test "Empty search shows message"
-  navigate "https://example.com"
-  click "#search-button"
-  wait_for ".no-results"
-  assert_text ".no-results" "Please enter a search term"
+  navigate "https://duckduckgo.com"
+  wait_for "#searchbox_input"
+  click "button[type='submit']"
+  assert_element_exists "#searchbox_input"

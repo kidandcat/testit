@@ -18,8 +18,8 @@ func TestNewRunner(t *testing.T) {
 	if runner.config.Headless != true {
 		t.Error("Expected default headless to be true")
 	}
-	if runner.config.Timeout != 30*time.Second {
-		t.Error("Expected default timeout to be 30s")
+	if runner.config.Timeout != 10*time.Second {
+		t.Error("Expected default timeout to be 10s")
 	}
 	if runner.config.ScreenshotDir != "__screenshots__" {
 		t.Error("Expected default screenshot dir to be __screenshots__")

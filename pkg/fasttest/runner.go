@@ -21,6 +21,8 @@ import (
 type Runner struct {
 	allocCtx          context.Context
 	allocCancel       context.CancelFunc
+	browserCtx        context.Context
+	browserCancel     context.CancelFunc
 	config            *Config
 	tests             []Test
 	results           []TestResult
@@ -28,6 +30,8 @@ type Runner struct {
 	consoleErrors     []ConsoleError
 	screenshotCounter map[string]int
 	snapshotCounter   map[string]int
+	failureCount      int
+	testsRun          int
 }
 
 type Config struct {
@@ -72,7 +76,7 @@ func NewRunner(config *Config) *Runner {
 	if config == nil {
 		config = &Config{
 			Headless:            true,
-			Timeout:             10 * time.Second, // Reduced default timeout
+			Timeout:             45 * time.Second, // Increased default timeout
 			FailOnConsoleError:  true,
 			ScreenshotDir:       "__screenshots__",
 			ScreenshotThreshold: 0.0,
@@ -98,22 +102,125 @@ func (r *Runner) Start() error {
 		chromedp.Flag("headless", r.config.Headless),
 		chromedp.Flag("disable-gpu", r.config.Headless),
 		chromedp.Flag("no-sandbox", true),
-		chromedp.Flag("disable-dev-shm-usage", true), // Use /tmp instead of /dev/shm
+		chromedp.Flag("disable-dev-shm-usage", true),
 		chromedp.Flag("disable-setuid-sandbox", true),
-		chromedp.Flag("disable-features", "site-per-process"), // Faster navigation
+		chromedp.Flag("disable-features", "site-per-process,TranslateUI"),
+		chromedp.Flag("disable-background-timer-throttling", true),
+		chromedp.Flag("disable-backgrounding-occluded-windows", true),
+		chromedp.Flag("disable-renderer-backgrounding", true),
+		chromedp.Flag("disable-blink-features", "AutomationControlled"),
+		chromedp.Flag("enable-automation", false),
+		chromedp.Flag("disable-hang-monitor", true),
+		chromedp.Flag("disable-ipc-flooding-protection", true),
+		chromedp.Flag("disable-popup-blocking", true),
+		chromedp.Flag("disable-prompt-on-repost", true),
+		chromedp.Flag("disable-default-apps", true),
+		chromedp.Flag("disable-sync", true),
+		chromedp.Flag("disable-extensions", true),
+		chromedp.Flag("disable-client-side-phishing-detection", true),
+		chromedp.Flag("metrics-recording-only", true),
+		chromedp.Flag("safebrowsing-disable-auto-update", true),
+		chromedp.Flag("password-store", "basic"),
+		chromedp.Flag("use-mock-keychain", true),
+		chromedp.Flag("log-level", "3"), // Suppress verbose logs
 	)
 
+	// Create allocator with suppressed debug output
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	r.allocCtx = allocCtx
 	r.allocCancel = cancel
+	
+	// Verify Chrome is working by running a health check
+	if err := r.healthCheck(); err != nil {
+		return fmt.Errorf("Chrome health check failed: %v", err)
+	}
 
 	return nil
 }
 
+// healthCheck verifies Chrome is responsive
+func (r *Runner) healthCheck() error {
+	if r.allocCtx == nil {
+		return fmt.Errorf("Chrome not initialized")
+	}
+	
+	// Create a test context to verify Chrome is working
+	ctx, cancel := chromedp.NewContext(r.allocCtx)
+	defer cancel()
+	
+	// Apply a short timeout for health check
+	ctx, timeoutCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer timeoutCancel()
+	
+	// Navigate to about:blank to verify Chrome is responsive
+	err := chromedp.Run(ctx,
+		chromedp.Navigate("about:blank"),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+	)
+	
+	if err != nil {
+		return fmt.Errorf("Chrome health check failed: %v", err)
+	}
+	
+	return nil
+}
+
+func (r *Runner) cleanBrowserState(ctx context.Context) error {
+	// Navigate to about:blank to clean state and wait for it to be ready
+	return chromedp.Run(ctx,
+		chromedp.Navigate("about:blank"),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+	)
+}
+
 func (r *Runner) Stop() error {
 	if r.allocCancel != nil {
-		r.allocCancel()
+		// Create a channel to signal when cleanup is done
+		done := make(chan struct{})
+		
+		// Run cancellation in a goroutine
+		go func() {
+			r.allocCancel()
+			close(done)
+		}()
+		
+		// Wait for cancellation with timeout
+		select {
+		case <-done:
+			// Cancellation completed successfully
+		case <-time.After(5 * time.Second):
+			// Timeout - Chrome might not have shut down cleanly
+			// This prevents hanging if Chrome doesn't respond
+		}
+		
+		// Give Chrome a moment to fully terminate
+		time.Sleep(100 * time.Millisecond)
 	}
+	return nil
+}
+
+// restartChrome stops and restarts the Chrome process
+func (r *Runner) restartChrome() error {
+	// Stop existing Chrome
+	if err := r.Stop(); err != nil {
+		return fmt.Errorf("failed to stop Chrome: %v", err)
+	}
+	
+	// Clear all state
+	r.allocCtx = nil
+	r.allocCancel = nil
+	
+	// Wait a bit to ensure Chrome is fully terminated
+	time.Sleep(1 * time.Second)
+	
+	// Start Chrome again
+	if err := r.Start(); err != nil {
+		return fmt.Errorf("failed to restart Chrome: %v", err)
+	}
+	
+	// Reset failure count after restart
+	r.failureCount = 0
+	
 	return nil
 }
 
@@ -124,42 +231,71 @@ func (r *Runner) AddTest(test Test) {
 func (r *Runner) Run() []TestResult {
 	r.results = make([]TestResult, 0, len(r.tests))
 
-	// Run tests with parallel execution
-	testChan := make(chan Test, len(r.tests))
-	resultChan := make(chan TestResult, len(r.tests))
-
-	// Start workers
-	numWorkers := 4
-	var wg sync.WaitGroup
-	wg.Add(numWorkers)
-
-	for i := 0; i < numWorkers; i++ {
-		go func() {
-			defer wg.Done()
-			for test := range testChan {
-				result := r.runTest(test)
-				resultChan <- result
+	// Run tests sequentially with Chrome restart when needed
+	for i, test := range r.tests {
+		// Check if we need to restart Chrome
+		// Restart after 2 consecutive timeouts, or every 10 tests to prevent context degradation
+		if r.failureCount >= 2 || (r.testsRun > 0 && r.testsRun % 10 == 0) {
+			if err := r.restartChrome(); err != nil {
+				// If restart fails, record error for all remaining tests
+				for j := i; j < len(r.tests); j++ {
+					r.results = append(r.results, TestResult{
+						Name:     r.tests[j].Name,
+						Passed:   false,
+						Error:    fmt.Errorf("Chrome restart failed: %v", err),
+						Duration: 0,
+					})
+				}
+				return r.results
 			}
-		}()
-	}
-
-	// Add tests to channel
-	for _, test := range r.tests {
-		testChan <- test
-	}
-	close(testChan)
-
-	// Collect results
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	for result := range resultChan {
+		}
+		
+		// Run test with retry on timeout
+		result := r.runTestWithRetry(test)
 		r.results = append(r.results, result)
+		r.testsRun++
+		
+		// Small delay between tests to prevent resource exhaustion
+		if i < len(r.tests)-1 {
+			time.Sleep(200 * time.Millisecond)
+		}
+		
+		// Track consecutive failures
+		if !result.Passed && strings.Contains(result.Error.Error(), "context deadline exceeded") {
+			r.failureCount++
+		} else if result.Passed {
+			r.failureCount = 0 // Reset on success
+		}
 	}
 
 	return r.results
+}
+
+// runTestWithRetry runs a test with retry logic for timeout errors
+func (r *Runner) runTestWithRetry(test Test) TestResult {
+	maxRetries := 2
+	
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		result := r.runTest(test)
+		
+		// If test passed or failed for non-timeout reason, return
+		if result.Passed || (result.Error != nil && !strings.Contains(result.Error.Error(), "context deadline exceeded") && !strings.Contains(result.Error.Error(), "context canceled")) {
+			return result
+		}
+		
+		// If this was a timeout/cancel and not the last attempt, restart Chrome and retry
+		if attempt < maxRetries {
+			// Always restart Chrome on timeout
+			if err := r.restartChrome(); err != nil {
+				// If restart failed, return the original error
+				return result
+			}
+			// Chrome restarted, retry immediately
+		}
+	}
+	
+	// If we're here, all retries failed
+	return r.runTest(test)
 }
 
 func (r *Runner) runTest(test Test) TestResult {
@@ -177,20 +313,34 @@ func (r *Runner) runTest(test Test) TestResult {
 		return result
 	}
 
-	// Create a new browser context for this test with timeout
+	// Create a new browser context for this test
 	ctx, cancel := chromedp.NewContext(r.allocCtx)
 	defer cancel()
-
+	
 	// Apply timeout from config
 	ctx, cancel = context.WithTimeout(ctx, r.config.Timeout)
 	defer cancel()
-
-	// Initialize the browser by navigating to about:blank
-	if err := chromedp.Run(ctx, chromedp.Navigate("about:blank")); err != nil {
+	
+	// Run the context to ensure it's properly initialized
+	if err := chromedp.Run(ctx); err != nil {
+		result.Passed = false
+		result.Error = fmt.Errorf("failed to initialize Chrome context: %v", err)
+		return result
+	}
+	
+	// Clear any previous console errors
+	r.mu.Lock()
+	r.consoleErrors = []ConsoleError{}
+	r.mu.Unlock()
+	
+	// Initialize browser with about:blank
+	err := chromedp.Run(ctx, chromedp.Navigate("about:blank"))
+	if err != nil {
 		result.Passed = false
 		result.Error = fmt.Errorf("failed to initialize browser: %v", err)
 		return result
 	}
+
 
 	// Set up console listener
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
@@ -208,10 +358,8 @@ func (r *Runner) runTest(test Test) TestResult {
 					Timestamp: time.Now(),
 				}
 
-				// Get current URL
-				var url string
-				chromedp.Run(ctx, chromedp.Location(&url))
-				consoleErr.URL = url
+				// Skip URL retrieval to avoid potential deadlocks
+				consoleErr.URL = ""
 
 				if r.config.ErrorFilter == nil || !r.config.ErrorFilter(consoleErr) {
 					r.mu.Lock()
@@ -244,6 +392,13 @@ func (r *Runner) runTest(test Test) TestResult {
 }
 
 func (r *Runner) executeStep(ctx context.Context, step Step, testName string) error {
+	// Check if context is already cancelled before executing step
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	switch step.Action {
 	case "navigate":
 		return chromedp.Run(ctx, chromedp.Navigate(step.Target))
@@ -255,7 +410,11 @@ func (r *Runner) executeStep(ctx context.Context, step Step, testName string) er
 		return chromedp.Run(ctx, chromedp.SendKeys(step.Target, step.Value, chromedp.NodeVisible))
 
 	case "wait_for":
-		return chromedp.Run(ctx, chromedp.WaitVisible(step.Target))
+		// Use a more robust wait with polling
+		return chromedp.Run(ctx, 
+			chromedp.WaitVisible(step.Target),
+			chromedp.WaitReady(step.Target),
+		)
 
 	case "assert_text":
 		var text string
@@ -340,6 +499,12 @@ func (r *Runner) executeStep(ctx context.Context, step Step, testName string) er
 		return nil
 
 	case "screenshot":
+		// Add context check before screenshot
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled before screenshot: %v", ctx.Err())
+		default:
+		}
 		return r.takeScreenshot(ctx, step.Target, testName)
 
 	case "snapshot":
@@ -441,6 +606,13 @@ func (r *Runner) executeStep(ctx context.Context, step Step, testName string) er
 }
 
 func (r *Runner) takeScreenshot(ctx context.Context, filename string, testName string) error {
+	// Check context at start
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context already cancelled at start of takeScreenshot: %v", ctx.Err())
+	default:
+	}
+	
 	if filename == "" {
 		// Sanitize test name for filename
 		safeTestName := strings.ReplaceAll(testName, " ", "_")
@@ -466,10 +638,25 @@ func (r *Runner) takeScreenshot(ctx context.Context, filename string, testName s
 		return fmt.Errorf("failed to create screenshot directory: %v", err)
 	}
 
-	// Take current screenshot
+	// Ensure page is ready before screenshot
+	err = chromedp.Run(ctx, 
+		chromedp.WaitReady("body", chromedp.ByQuery),
+		chromedp.Sleep(200 * time.Millisecond), // Give page time to stabilize
+	)
+	if err != nil {
+		return fmt.Errorf("failed to wait for page ready before screenshot: %v", err)
+	}
+	
+	// Take current screenshot with timeout handling
 	var screenshot []byte
-	err = chromedp.Run(ctx,
-		chromedp.FullScreenshot(&screenshot, 100),
+	screenshotCtx, screenshotCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer screenshotCancel()
+	
+	// Add a small delay to ensure page is fully rendered
+	time.Sleep(100 * time.Millisecond)
+	
+	err = chromedp.Run(screenshotCtx,
+		chromedp.CaptureScreenshot(&screenshot),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to take screenshot: %v", err)
@@ -764,42 +951,48 @@ func escapeHTML(s string) string {
 func (r *Runner) RunWithProgress(resultsChan chan<- TestResult, wg *sync.WaitGroup) []TestResult {
 	r.results = make([]TestResult, 0, len(r.tests))
 
-	testChan := make(chan Test, len(r.tests))
-	resultCollector := make(chan TestResult, len(r.tests))
-
-	// Use 4 parallel workers
-	numWorkers := 4
-
-	var workerWg sync.WaitGroup
-	workerWg.Add(numWorkers)
-
-	for i := 0; i < numWorkers; i++ {
-		go func() {
-			defer workerWg.Done()
-			for test := range testChan {
-				result := r.runTest(test)
-				resultCollector <- result
+	// Run tests sequentially with Chrome restart when needed
+	for i, test := range r.tests {
+		// Check if we need to restart Chrome
+		// Restart after 2 consecutive timeouts, or every 10 tests to prevent context degradation
+		if r.failureCount >= 2 || (r.testsRun > 0 && r.testsRun % 10 == 0) {
+			if err := r.restartChrome(); err != nil {
+				// If restart fails, record error for all remaining tests
+				for j := i; j < len(r.tests); j++ {
+					result := TestResult{
+						Name:     r.tests[j].Name,
+						Passed:   false,
+						Error:    fmt.Errorf("Chrome restart failed: %v", err),
+						Duration: 0,
+					}
+					r.results = append(r.results, result)
+					wg.Add(1)
+					resultsChan <- result
+				}
+				return r.results
 			}
-		}()
-	}
-
-	// Add tests to channel
-	for _, test := range r.tests {
-		testChan <- test
-	}
-	close(testChan)
-
-	// Wait for all workers to complete
-	go func() {
-		workerWg.Wait()
-		close(resultCollector)
-	}()
-
-	// Collect results and forward to UI
-	for result := range resultCollector {
+		}
+		
+		// Run test with retry on timeout
+		result := r.runTestWithRetry(test)
 		r.results = append(r.results, result)
+		r.testsRun++
+		
+		// Send result to channel
 		wg.Add(1)
 		resultsChan <- result
+		
+		// Small delay between tests to prevent resource exhaustion
+		if i < len(r.tests)-1 {
+			time.Sleep(200 * time.Millisecond)
+		}
+		
+		// Track consecutive failures
+		if !result.Passed && strings.Contains(result.Error.Error(), "context deadline exceeded") {
+			r.failureCount++
+		} else if result.Passed {
+			r.failureCount = 0 // Reset on success
+		}
 	}
 
 	return r.results

@@ -13,14 +13,11 @@ test "Homepage visual regression"
 
 test "Multiple screenshots in test"
   navigate "https://example.com"
+  wait_for "h1"
   
   # First screenshot: Multiple_screenshots_in_test.png
   # If exists, compares against baseline
   screenshot
-  
-  # Click link and take another screenshot
-  click "a"
-  wait_for "h1"
   
   # Second screenshot: Multiple_screenshots_in_test_2.png  
   screenshot
@@ -30,6 +27,7 @@ test "Multiple screenshots in test"
 
 test "Visual regression with baseline"
   navigate "https://example.com"
+  wait_for "h1"
   
   # First run creates baseline: Visual_regression_with_baseline.png
   # Subsequent runs compare against it

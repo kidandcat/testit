@@ -1,0 +1,6 @@
+# Test screenshot comparison only
+
+test "Screenshot comparison"
+  navigate "https://example.com"
+  wait_for "h1"
+  screenshot "example-homepage.png"

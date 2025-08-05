@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -27,7 +29,7 @@ const (
 func main() {
 	var (
 		headless           = flag.Bool("headless", true, "Run browser in headless mode")
-		timeout            = flag.Duration("timeout", 10*time.Second, "Test timeout")
+		timeout            = flag.Duration("timeout", 30*time.Second, "Test timeout")
 		failOnConsoleError = flag.Bool("fail-on-console-error", true, "Fail tests when console errors occur")
 		pattern            = flag.String("pattern", "*.test", "File pattern for test files")
 		configFile         = flag.String("config", "", "Config file path")
@@ -88,6 +90,18 @@ func main() {
 		log.Fatal("Failed to start browser:", err)
 	}
 	defer runner.Stop()
+
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	
+	// Handle cleanup on signal
+	go func() {
+		<-sigChan
+		fmt.Println("\nReceived interrupt signal, shutting down gracefully...")
+		runner.Stop()
+		os.Exit(0)
+	}()
 
 	testFiles, err := findTestFiles(*pattern, flag.Args())
 	if err != nil {

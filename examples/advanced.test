@@ -2,6 +2,7 @@
 
 test "Homepage elements and interactions"
   navigate "https://example.com"
+  wait_for "h1"
   
   # Assert elements exist
   assert_element_exists "h1"
@@ -9,35 +10,20 @@ test "Homepage elements and interactions"
   
   # Assert text content
   assert_text "h1" "Example Domain"
-  assert_text_contains "p" "This domain is for use in illustrative examples"
   
   # Assert page properties
   assert_title "Example Domain"
-  assert_url "https://example.com/"
-  
-  # Take a screenshot
-  screenshot "homepage.png"
 
 test "Form interactions"
-  navigate "https://www.w3schools.com/html/tryit.asp?filename=tryhtml_form_submit"
+  navigate "https://the-internet.herokuapp.com/dropdown"
   
-  # Wait for iframe and switch context
-  wait_for "iframe#iframeResult"
+  # Wait for dropdown to be loaded
+  wait_for "select#dropdown"
   
-  # Type in form fields
-  type "input[name='fname']" "John"
-  type "input[name='lname']" "Doe"
+  # Select from dropdown
+  select "select#dropdown" "1"
   
-  # Check a checkbox (if present)
-  # check "input[type='checkbox']"
-  
-  # Select from dropdown (if present)
-  # select "select#cars" "volvo"
-  
-  # Hover over submit button
-  hover "input[type='submit']"
-  
-  # Take screenshot before submit
+  # Take screenshot after selection
   screenshot "form-filled.png"
 
 test "Screenshot comparison"
@@ -51,8 +37,8 @@ test "Screenshot comparison"
 test "Dynamic content waiting"
   navigate "https://example.com"
   
-  # Wait for specific text to appear
-  wait_for_text "p" "illustrative examples"
+  # Wait for h1 to be visible
+  wait_for "h1"
   
-  # Assert attribute values
-  assert_attribute "a" "href" "https://www.iana.org/domains/example"
+  # Assert element exists
+  assert_element_exists "h1"

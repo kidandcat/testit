@@ -6,12 +6,12 @@ headless: true
 browserType: chrome  # chrome, firefox, edge (not implemented yet)
 
 # Timeouts
-timeout: 30s  # Global timeout for operations
+timeout: 60s  # Global timeout for operations
 actionTimeouts:
   navigate: 20s
   click: 10s
   type: 5s
-  wait_for: 15s
+  wait_for: 5s
   assert_text: 5s
 
 # Console error handling
