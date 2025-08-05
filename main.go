@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/kidandcat/fasttest/pkg/config"
-	"github.com/kidandcat/fasttest/pkg/fasttest"
-	"github.com/kidandcat/fasttest/pkg/parser"
+	"github.com/kidandcat/testit/pkg/config"
+	"github.com/kidandcat/testit/pkg/fasttest"
+	"github.com/kidandcat/testit/pkg/parser"
 )
 
 const (
@@ -173,7 +173,7 @@ func findTestFiles(pattern string, args []string) ([]string, error) {
 
 	if len(args) > 0 {
 		for _, arg := range args {
-			if strings.HasSuffix(arg, ".test") || strings.HasSuffix(arg, ".fasttest") {
+			if strings.HasSuffix(arg, ".test") || strings.HasSuffix(arg, ".testit") {
 				files = append(files, arg)
 			} else {
 				matches, err := filepath.Glob(filepath.Join(arg, pattern))

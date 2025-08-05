@@ -1,4 +1,4 @@
-# FastTest
+# TestIt
 
 A simple and powerful browser testing framework built on [chromedp](https://github.com/chromedp/chromedp) with a focus on DSL-based test files for easy, code-free testing.
 
@@ -15,7 +15,7 @@ A simple and powerful browser testing framework built on [chromedp](https://gith
 ## Installation
 
 ```bash
-go install github.com/kidandcat/fasttest@latest
+go install github.com/kidandcat/testit@latest
 ```
 
 ## Quick Start
@@ -37,7 +37,7 @@ test "User can login"
 Run it with the CLI:
 
 ```bash
-fasttest login.test
+testit login.test
 ```
 
 ## DSL Commands
@@ -73,7 +73,7 @@ fasttest login.test
 
 ### Configuration File
 
-Create a `fasttest.config.yaml` in your project root:
+Create a `testit.config.yaml` in your project root:
 
 ```yaml
 # Browser settings
@@ -95,7 +95,7 @@ updateScreenshots: false
 screenshotThreshold: 0.01  # 1% pixel difference allowed
 ```
 
-Or use JSON format (`fasttest.config.json`):
+Or use JSON format (`testit.config.json`):
 
 ```json
 {
@@ -106,25 +106,25 @@ Or use JSON format (`fasttest.config.json`):
 }
 ```
 
-FastTest automatically finds config files in this order:
-- `fasttest.config.yaml`, `fasttest.config.yml`, `fasttest.config.json`
-- `fasttest.yaml`, `fasttest.yml`, `fasttest.json`
-- `.fasttest.yaml`, `.fasttest.yml`, `.fasttest.json`
+TestIt automatically finds config files in this order:
+- `testit.config.yaml`, `testit.config.yml`, `testit.config.json`
+- `testit.yaml`, `testit.yml`, `testit.json`
+- `.testit.yaml`, `.testit.yml`, `.testit.json`
 
 ## CLI Usage
 
 ```bash
 # Run all .test files in current directory
-fasttest
+testit
 
 # Run specific files
-fasttest login.test search.test
+testit login.test search.test
 
 # Run with options
-fasttest -headless=false -timeout=60s *.test
+testit -headless=false -timeout=60s *.test
 
 # Run tests in a directory
-fasttest tests/
+testit tests/
 ```
 
 ### CLI Options
@@ -210,11 +210,11 @@ See the `examples/` directory for complete examples:
 - `login.test` - Login flow testing
 - `search.test` - Search functionality testing  
 - `advanced.test` - Demonstrates all DSL commands
-- `fasttest.config.yaml` - Example configuration file
+- `testit.config.yaml` - Example configuration file
 
 ## Using as a Go Library
 
-While FastTest is designed primarily for DSL-based testing, it can also be used as a Go library:
+While TestIt is designed primarily for DSL-based testing, it can also be used as a Go library:
 
 ```go
 package main
@@ -222,7 +222,7 @@ package main
 import (
     "fmt"
     "log"
-    "github.com/kidandcat/fasttest/pkg/fasttest"
+    "github.com/kidandcat/testit/pkg/fasttest"
 )
 
 func main() {

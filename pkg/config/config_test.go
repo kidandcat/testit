@@ -193,14 +193,14 @@ func TestFindConfigFile(t *testing.T) {
 
 	// Test finding different config files
 	configFiles := []string{
-		"fasttest.config.yaml",
-		"fasttest.yml",
-		".fasttest.json",
+		"testit.config.yaml",
+		"testit.yml",
+		".testit.json",
 	}
 
 	for _, filename := range configFiles {
 		// Clean up previous files
-		files, _ := filepath.Glob("*fasttest*")
+		files, _ := filepath.Glob("*testit*")
 		for _, f := range files {
 			os.Remove(f)
 		}

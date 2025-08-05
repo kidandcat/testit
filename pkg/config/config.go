@@ -84,15 +84,15 @@ func LoadConfig(filename string) (*FileConfig, error) {
 // FindConfigFile searches for a config file in the current directory
 func FindConfigFile() string {
 	configNames := []string{
-		"fasttest.config.yaml",
-		"fasttest.config.yml",
-		"fasttest.config.json",
-		"fasttest.yaml",
-		"fasttest.yml",
-		"fasttest.json",
-		".fasttest.yaml",
-		".fasttest.yml",
-		".fasttest.json",
+		"testit.config.yaml",
+		"testit.config.yml",
+		"testit.config.json",
+		"testit.yaml",
+		"testit.yml",
+		"testit.json",
+		".testit.yaml",
+		".testit.yml",
+		".testit.json",
 	}
 
 	for _, name := range configNames {
