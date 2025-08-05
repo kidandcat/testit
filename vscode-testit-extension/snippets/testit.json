@@ -1,0 +1,141 @@
+{
+  "Test Declaration": {
+    "prefix": "test",
+    "body": [
+      "test \"${1:Test name}\"",
+      "  ${2:navigate ${3:url}}"
+    ],
+    "description": "Create a new test"
+  },
+  "Navigate": {
+    "prefix": "navigate",
+    "body": ["navigate ${1:url}"],
+    "description": "Navigate to a URL"
+  },
+  "Click": {
+    "prefix": "click",
+    "body": ["click ${1:selector}"],
+    "description": "Click on an element"
+  },
+  "Type": {
+    "prefix": "type",
+    "body": ["type ${1:selector} ${2:text}"],
+    "description": "Type text into an input"
+  },
+  "Select": {
+    "prefix": "select",
+    "body": ["select ${1:selector} ${2:value}"],
+    "description": "Select an option from dropdown"
+  },
+  "Check": {
+    "prefix": "check",
+    "body": ["check ${1:selector}"],
+    "description": "Check a checkbox"
+  },
+  "Uncheck": {
+    "prefix": "uncheck",
+    "body": ["uncheck ${1:selector}"],
+    "description": "Uncheck a checkbox"
+  },
+  "Hover": {
+    "prefix": "hover",
+    "body": ["hover ${1:selector}"],
+    "description": "Hover over an element"
+  },
+  "Wait For": {
+    "prefix": "wait_for",
+    "body": ["wait_for ${1:selector}"],
+    "description": "Wait for element to be visible"
+  },
+  "Wait For Text": {
+    "prefix": "wait_for_text",
+    "body": ["wait_for_text ${1:selector} ${2:text}"],
+    "description": "Wait for specific text in element"
+  },
+  "Wait For URL": {
+    "prefix": "wait_for_url",
+    "body": ["wait_for_url ${1:url_pattern}"],
+    "description": "Wait for URL to match pattern"
+  },
+  "Assert Text": {
+    "prefix": "assert_text",
+    "body": ["assert_text ${1:selector} ${2:expected_text}"],
+    "description": "Assert exact text match"
+  },
+  "Assert Text Contains": {
+    "prefix": "assert_text_contains",
+    "body": ["assert_text_contains ${1:selector} ${2:partial_text}"],
+    "description": "Assert element contains text"
+  },
+  "Assert Text Visible": {
+    "prefix": "assert_text_visible",
+    "body": ["assert_text_visible ${1:text}"],
+    "description": "Assert text is visible on page"
+  },
+  "Assert Element Exists": {
+    "prefix": "assert_element_exists",
+    "body": ["assert_element_exists ${1:selector}"],
+    "description": "Assert element exists in DOM"
+  },
+  "Assert Element Not Exists": {
+    "prefix": "assert_element_not_exists",
+    "body": ["assert_element_not_exists ${1:selector}"],
+    "description": "Assert element does not exist"
+  },
+  "Assert URL": {
+    "prefix": "assert_url",
+    "body": ["assert_url ${1:expected_url}"],
+    "description": "Assert current URL matches"
+  },
+  "Assert Title": {
+    "prefix": "assert_title",
+    "body": ["assert_title ${1:expected_title}"],
+    "description": "Assert page title matches"
+  },
+  "Assert Attribute": {
+    "prefix": "assert_attribute",
+    "body": ["assert_attribute ${1:selector} ${2:attribute} ${3:expected_value}"],
+    "description": "Assert element attribute value"
+  },
+  "Screenshot": {
+    "prefix": "screenshot",
+    "body": ["screenshot${1: ${2:filename.png}}"],
+    "description": "Take a screenshot"
+  },
+  "Snapshot": {
+    "prefix": "snapshot",
+    "body": ["snapshot${1: ${2:filename.html}}"],
+    "description": "Take an HTML snapshot"
+  },
+  "Login Test Template": {
+    "prefix": "test-login",
+    "body": [
+      "test \"${1:User can login successfully}\"",
+      "  navigate ${2:https://example.com/login}",
+      "  wait_for ${3:#username}",
+      "  type ${3:#username} ${4:user@example.com}",
+      "  type ${5:#password} ${6:password}",
+      "  click ${7:button[type='submit']}",
+      "  wait_for_url ${8:https://example.com/dashboard}",
+      "  assert_text_visible ${9:Welcome}",
+      "  screenshot ${10:login_success.png}"
+    ],
+    "description": "Complete login test template"
+  },
+  "Form Test Template": {
+    "prefix": "test-form",
+    "body": [
+      "test \"${1:Form submission}\"",
+      "  navigate ${2:https://example.com/form}",
+      "  wait_for ${3:#form}",
+      "  type ${4:#name} ${5:John Doe}",
+      "  type ${6:#email} ${7:john@example.com}",
+      "  select ${8:#country} ${9:US}",
+      "  check ${10:#agree}",
+      "  click ${11:button[type='submit']}",
+      "  wait_for_text ${12:.success} ${13:Form submitted successfully}",
+      "  screenshot"
+    ],
+    "description": "Form submission test template"
+  }
+}

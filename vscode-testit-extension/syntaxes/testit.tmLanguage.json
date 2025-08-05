@@ -1,0 +1,119 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TestIt",
+  "patterns": [
+    {"include": "#comments"},
+    {"include": "#test-declaration"},
+    {"include": "#command-with-args"},
+    {"include": "#strings"},
+    {"include": "#numbers"}
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [{
+        "name": "comment.line.number-sign.testit",
+        "match": "#.*$"
+      }]
+    },
+    "test-declaration": {
+      "patterns": [{
+        "match": "^(\\s*)(test)\\s+(\"[^\"]*\")",
+        "captures": {
+          "2": {"name": "keyword.control.test.testit"},
+          "3": {"name": "string.quoted.double.test-name.testit"}
+        }
+      }]
+    },
+    "command-with-args": {
+      "patterns": [
+        {
+          "match": "^(\\s*)(navigate|assert_url|assert_title|assert_text_visible|wait_for_url)\\s+(.+)$",
+          "captures": {
+            "2": {"name": "keyword.control.testit"},
+            "3": {"name": "string.unquoted.argument.testit"}
+          }
+        },
+        {
+          "match": "^(\\s*)(click|check|uncheck|hover|wait_for|assert_element_exists|assert_element_not_exists)\\s+([^\\s]+)$",
+          "captures": {
+            "2": {"name": "keyword.control.testit"},
+            "3": {"name": "variable.parameter.selector.testit"}
+          }
+        },
+        {
+          "match": "^(\\s*)(type|select|wait_for_text|assert_text|assert_text_contains)\\s+([^\\s]+)\\s+(.+)$",
+          "captures": {
+            "2": {"name": "keyword.control.testit"},
+            "3": {"name": "variable.parameter.selector.testit"},
+            "4": {"name": "string.unquoted.value.testit"}
+          }
+        },
+        {
+          "match": "^(\\s*)(assert_attribute)\\s+([^\\s]+)\\s+([^\\s]+)\\s+(.+)$",
+          "captures": {
+            "2": {"name": "keyword.control.testit"},
+            "3": {"name": "variable.parameter.selector.testit"},
+            "4": {"name": "variable.parameter.attribute.testit"},
+            "5": {"name": "string.unquoted.value.testit"}
+          }
+        },
+        {
+          "match": "^(\\s*)(screenshot|snapshot)(?:\\s+([^\\s]+))?$",
+          "captures": {
+            "2": {"name": "keyword.control.visual.testit"},
+            "3": {"name": "string.unquoted.filename.testit"}
+          }
+        },
+        {
+          "name": "keyword.control.navigation.testit",
+          "match": "\\b(navigate)\\b"
+        },
+        {
+          "name": "keyword.control.interaction.testit",
+          "match": "\\b(click|type|select|check|uncheck|hover)\\b"
+        },
+        {
+          "name": "keyword.control.wait.testit",
+          "match": "\\b(wait_for|wait_for_text|wait_for_url)\\b"
+        },
+        {
+          "name": "keyword.control.assertion.testit",
+          "match": "\\b(assert_text|assert_text_contains|assert_text_visible|assert_element_exists|assert_element_not_exists|assert_url|assert_title|assert_attribute)\\b"
+        },
+        {
+          "name": "keyword.control.visual.testit",
+          "match": "\\b(screenshot|snapshot)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.testit",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [{
+            "name": "constant.character.escape.testit",
+            "match": "\\\\."
+          }]
+        },
+        {
+          "name": "string.quoted.single.testit",
+          "begin": "'",
+          "end": "'",
+          "patterns": [{
+            "name": "constant.character.escape.testit",
+            "match": "\\\\."
+          }]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [{
+        "name": "constant.numeric.testit",
+        "match": "\\b\\d+(\\.\\d+)?\\b"
+      }]
+    }
+  },
+  "scopeName": "source.testit"
+}

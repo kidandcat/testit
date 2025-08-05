@@ -1,6 +1,6 @@
 # Simple screenshot test
 
 test "Basic screenshot"
-  navigate "https://example.com"
-  wait_for "h1"
-  screenshot "test-screenshot.png"
+  navigate https://example.com
+  wait_for h1
+  screenshot test-screenshot.png

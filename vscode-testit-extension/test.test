@@ -1,0 +1,72 @@
+# Test file to verify syntax highlighting and autocomplete
+
+# Basic navigation test
+test "Homepage loads correctly"
+  navigate https://example.com
+  wait_for h1
+  assert_text h1 Example Domain
+  assert_title Example Domain
+  screenshot
+
+# Login flow test
+test "User can login successfully"
+  navigate https://example.com/login
+  wait_for #username
+  type #username testuser@example.com
+  type #password securepassword123
+  check #remember-me
+  click button[type='submit']
+  wait_for_url https://example.com/dashboard
+  assert_text_visible Welcome back, testuser
+  screenshot login_success.png
+
+# Form submission test
+test "Contact form submission"
+  navigate https://example.com/contact
+  wait_for #contact-form
+  type #name John Doe
+  type #email john.doe@example.com
+  select #subject support
+  type #message This is a test message
+  click #submit-button
+  wait_for_text .alert-success Thank you for contacting us
+  assert_element_not_exists .error-message
+  snapshot contact_form_submitted.html
+
+# Shopping cart test
+test "Add item to cart"
+  navigate https://shop.example.com
+  wait_for .product-list
+  hover .product-card:first-child
+  click .product-card:first-child .add-to-cart
+  wait_for_text .cart-count 1
+  assert_element_exists .cart-notification
+  click .cart-icon
+  wait_for_url https://shop.example.com/cart
+  assert_text_contains .cart-items Product added
+  screenshot cart_with_item.png
+
+# All assertions test
+test "Testing all assertion types"
+  navigate https://example.com/test-page
+  
+  # Text assertions
+  assert_text #exact-text Hello World
+  assert_text_contains #partial-text Hello
+  assert_text_visible Welcome to the test page
+  
+  # Element assertions
+  assert_element_exists #test-element
+  assert_element_not_exists #missing-element
+  
+  # URL and title assertions
+  assert_url https://example.com/test-page
+  assert_title Test Page - Example
+  
+  # Attribute assertion
+  assert_attribute input#email type email
+  assert_attribute button#submit disabled true
+  
+  # Visual testing
+  screenshot all_assertions.png
+  snapshot page_state.html

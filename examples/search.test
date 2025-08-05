@@ -1,12 +1,12 @@
 # Example test file for search functionality
 
 test "Search returns results"
-  navigate "https://www.google.com"
-  wait_for "textarea[name='q']"
-  assert_element_exists "textarea[name='q']"
+  navigate https://www.google.com
+  wait_for textarea[name='q']
+  assert_element_exists textarea[name='q']
 
 test "Empty search shows message"
-  navigate "https://duckduckgo.com"
-  wait_for "#searchbox_input"
-  click "button[type='submit']"
-  assert_element_exists "#searchbox_input"
+  navigate https://duckduckgo.com
+  wait_for #searchbox_input
+  click button[type='submit']
+  assert_element_exists #searchbox_input

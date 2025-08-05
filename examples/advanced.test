@@ -1,44 +1,44 @@
 # Advanced test demonstrating new commands
 
 test "Homepage elements and interactions"
-  navigate "https://example.com"
-  wait_for "h1"
+  navigate https://example.com
+  wait_for h1
   
   # Assert elements exist
-  assert_element_exists "h1"
-  assert_element_exists "p"
+  assert_element_exists h1
+  assert_element_exists p
   
   # Assert text content
-  assert_text "h1" "Example Domain"
+  assert_text h1 Example Domain
   
   # Assert page properties
-  assert_title "Example Domain"
+  assert_title Example Domain
 
 test "Form interactions"
-  navigate "https://the-internet.herokuapp.com/dropdown"
+  navigate https://the-internet.herokuapp.com/dropdown
   
   # Wait for dropdown to be loaded
-  wait_for "select#dropdown"
+  wait_for select#dropdown
   
   # Select from dropdown
-  select "select#dropdown" "1"
+  select select#dropdown 1
   
   # Take screenshot after selection
-  screenshot "form-filled.png"
+  screenshot form-filled.png
 
 test "Screenshot comparison"
-  navigate "https://example.com"
-  wait_for "h1"
+  navigate https://example.com
+  wait_for h1
   
   # This will create a baseline on first run
   # On subsequent runs, it will compare against baseline
-  screenshot "example-homepage.png"
+  screenshot example-homepage.png
 
 test "Dynamic content waiting"
-  navigate "https://example.com"
+  navigate https://example.com
   
   # Wait for h1 to be visible
-  wait_for "h1"
+  wait_for h1
   
   # Assert element exists
-  assert_element_exists "h1"
+  assert_element_exists h1

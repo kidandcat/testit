@@ -1,4 +1,4 @@
 test "this will fail"
-    navigate "https://example.com"
-    wait_for "h1"
-    assert_text "h1" "Wrong Title"
+    navigate https://example.com
+    wait_for h1
+    assert_text h1 Wrong Title

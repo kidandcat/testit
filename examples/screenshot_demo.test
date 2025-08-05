@@ -1,8 +1,8 @@
 # Screenshot demo showing auto-naming functionality
 
 test "Homepage visual regression"
-  navigate "https://example.com"
-  wait_for "h1"
+  navigate https://example.com
+  wait_for h1
   
   # Auto-named screenshot: Homepage_visual_regression.png
   # First run saves, subsequent runs compare
@@ -12,8 +12,8 @@ test "Homepage visual regression"
   screenshot
 
 test "Multiple screenshots in test"
-  navigate "https://example.com"
-  wait_for "h1"
+  navigate https://example.com
+  wait_for h1
   
   # First screenshot: Multiple_screenshots_in_test.png
   # If exists, compares against baseline
@@ -23,15 +23,15 @@ test "Multiple screenshots in test"
   screenshot
   
   # With custom name
-  screenshot "custom_name.png"
+  screenshot custom_name.png
 
 test "Visual regression with baseline"
-  navigate "https://example.com"
-  wait_for "h1"
+  navigate https://example.com
+  wait_for h1
   
   # First run creates baseline: Visual_regression_with_baseline.png
   # Subsequent runs compare against it
   screenshot
   
   # Named screenshot for comparison
-  screenshot "known_good_state.png"
+  screenshot known_good_state.png

@@ -26,12 +26,12 @@ Create a file `login.test`:
 
 ```
 test "User can login"
-  navigate "https://example.com/login"
-  type "#username" "user@example.com"
-  type "#password" "password123"
-  click "#login-button"
-  wait_for ".dashboard"
-  assert_text ".welcome" "Welcome!"
+  navigate https://example.com/login
+  type #username user@example.com
+  type #password password123
+  click #login-button
+  wait_for .dashboard
+  assert_text .welcome Welcome!
 ```
 
 Run it with the CLI:
@@ -43,31 +43,31 @@ testit login.test
 ## DSL Commands
 
 ### Navigation & Interaction
-- `navigate "url"` - Navigate to a URL
-- `click "selector"` - Click an element
-- `type "selector" "text"` - Type text into an input
-- `select "selector" "value"` - Select dropdown option
-- `check "selector"` - Check a checkbox
-- `uncheck "selector"` - Uncheck a checkbox
-- `hover "selector"` - Hover over an element
+- `navigate url` - Navigate to a URL
+- `click selector` - Click an element
+- `type selector text` - Type text into an input
+- `select selector value` - Select dropdown option
+- `check selector` - Check a checkbox
+- `uncheck selector` - Uncheck a checkbox
+- `hover selector` - Hover over an element
 
 ### Waiting
-- `wait_for "selector"` - Wait for an element to appear
-- `wait_for_text "selector" "text"` - Wait for specific text in element
-- `wait_for_url "pattern"` - Wait for URL to contain pattern
+- `wait_for selector` - Wait for an element to appear
+- `wait_for_text selector text` - Wait for specific text in element
+- `wait_for_url pattern` - Wait for URL to contain pattern
 
 ### Assertions
-- `assert_text "selector" "expected"` - Assert exact text match
-- `assert_text_contains "selector" "text"` - Assert text contains substring
-- `assert_element_exists "selector"` - Assert element exists
-- `assert_element_not_exists "selector"` - Assert element doesn't exist
-- `assert_url "expected_url"` - Assert current URL
-- `assert_title "expected_title"` - Assert page title
-- `assert_attribute "selector" "attribute" "value"` - Assert attribute value
+- `assert_text selector expected` - Assert exact text match
+- `assert_text_contains selector text` - Assert text contains substring
+- `assert_element_exists selector` - Assert element exists
+- `assert_element_not_exists selector` - Assert element doesn't exist
+- `assert_url expected_url` - Assert current URL
+- `assert_title expected_title` - Assert page title
+- `assert_attribute selector attribute value` - Assert attribute value
 
 ### Screenshots
 - `screenshot` - Take a screenshot (auto-names with test name + number). If screenshot already exists, compares against it and fails if different
-- `screenshot "filename"` - Take a screenshot with specific filename
+- `screenshot filename` - Take a screenshot with specific filename
 
 ## Configuration
 
@@ -145,8 +145,8 @@ Use screenshot command to catch visual regressions:
 
 ```
 test "Homepage visual test"
-  navigate "https://mysite.com"
-  wait_for ".main-content"
+  navigate https://mysite.com
+  wait_for .main-content
   screenshot
 ```
 
@@ -159,48 +159,48 @@ To update baselines when intentional changes are made, delete the old screenshot
 
 ```
 test "Complete form submission"
-  navigate "https://mysite.com/form"
+  navigate https://mysite.com/form
   
   # Fill text inputs
-  type "#name" "John Doe"
-  type "#email" "john@example.com"
+  type #name John Doe
+  type #email john@example.com
   
   # Select from dropdown
-  select "#country" "United States"
+  select #country United States
   
   # Check checkboxes
-  check "#terms"
-  check "#newsletter"
+  check #terms
+  check #newsletter
   
   # Hover and click submit
-  hover "#submit-btn"
-  screenshot "form-before-submit.png"
-  click "#submit-btn"
+  hover #submit-btn
+  screenshot form-before-submit.png
+  click #submit-btn
   
   # Verify success
-  wait_for ".success-message"
-  assert_text_contains ".success-message" "Thank you"
+  wait_for .success-message
+  assert_text_contains .success-message Thank you
 ```
 
 ### Testing Dynamic Content
 
 ```
 test "Search autocomplete"
-  navigate "https://mysite.com"
+  navigate https://mysite.com
   
   # Type and wait for suggestions
-  type "#search" "prod"
-  wait_for_text ".suggestions" "Products"
+  type #search prod
+  wait_for_text .suggestions Products
   
   # Verify suggestion exists
-  assert_element_exists ".suggestion-item"
+  assert_element_exists .suggestion-item
   
   # Click first suggestion
-  click ".suggestion-item:first-child"
+  click .suggestion-item:first-child
   
   # Verify navigation
-  wait_for_url "/search"
-  assert_url "https://mysite.com/search?q=Products"
+  wait_for_url /search
+  assert_url https://mysite.com/search?q=Products
 ```
 
 ## Examples

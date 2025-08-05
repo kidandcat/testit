@@ -1,17 +1,17 @@
 # Example test file for login functionality
 
 test "User can login successfully"
-  navigate "https://the-internet.herokuapp.com/login"
-  type "#username" "tomsmith"
-  type "#password" "SuperSecretPassword!"
-  click "button[type='submit']"
-  wait_for ".flash.success"
-  assert_text_contains ".flash.success" "You logged into a secure area!"
+  navigate https://the-internet.herokuapp.com/login
+  type #username tomsmith
+  type #password SuperSecretPassword!
+  click button[type='submit']
+  wait_for .flash.success
+  assert_text_contains .flash.success You logged into a secure area!
 
 test "Login fails with invalid credentials"
-  navigate "https://the-internet.herokuapp.com/login"
-  type "#username" "invalid"
-  type "#password" "wrongpassword"
-  click "button[type='submit']"
-  wait_for "#flash"
-  assert_element_exists "#flash"
+  navigate https://the-internet.herokuapp.com/login
+  type #username invalid
+  type #password wrongpassword
+  click button[type='submit']
+  wait_for #flash
+  assert_element_exists #flash

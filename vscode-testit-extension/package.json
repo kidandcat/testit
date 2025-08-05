@@ -1,0 +1,57 @@
+{
+  "name": "testit-syntax",
+  "displayName": "TestIt Syntax Highlighter",
+  "description": "Syntax highlighting and autocomplete for TestIt browser automation framework",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:testit"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "testit",
+        "aliases": [
+          "TestIt",
+          "testit"
+        ],
+        "extensions": [
+          ".test",
+          ".testit"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "testit",
+        "scopeName": "source.testit",
+        "path": "./syntaxes/testit.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "testit",
+        "path": "./snippets/testit.json"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.121",
+    "@types/vscode": "^1.102.0",
+    "vsce": "^2.15.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

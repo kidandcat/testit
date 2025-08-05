@@ -1,6 +1,6 @@
 # Simple test to demonstrate functionality
 
 test "Navigate to Google"
-  navigate "https://www.google.com"
-  wait_for "textarea[name='q']"
-  assert_element_exists "textarea[name='q']"
+  navigate https://www.google.com
+  wait_for textarea[name='q']
+  assert_element_exists textarea[name='q']
